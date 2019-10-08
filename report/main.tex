@@ -1,0 +1,65 @@
+\documentclass[11pt, a4paper, twocolumn]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{titlesec}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage[top=1cm, left=1cm, right=1cm, bottom=2cm]{geometry}
+
+\usepackage{helvet} % Helvetica 'phv'
+\usepackage{mathptmx} % Times 'ptm'
+
+\titleformat{\section}
+    {\sffamily\bfseries\large} % format
+    {\thesection} % label
+    {1em} % label separation
+    {} % before-code
+
+\titleformat{\subsection}
+    {\sffamily\bfseries} % format
+    {\thesubsection} % label
+    {1em} % label separation
+    {} % before-code
+
+\title{\sffamily\bfseries An Exploration of Optimisation Techniques\\for Vulkan-based Particle Systems}
+\author{Robin Wragg}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+
+\section{Notes}
+\citet{Crawford2018} note that shader compiler optimisation makes a big difference to overall graphics performance. Common optimisations that shader compilers can perform are dead code elimination, factoring out conditionals, unrolling loops, coalescing multiple vector element assignments into a single swizzled vector assignment, global value numbering causing variable elimination, and simplifying arithmetic by reordering the statements. Vulkan projects are likely to benefit from tweaking any available shader compilation options.
+
+When producing a simulation of water droplets on a glass pane... \citet{Chen2012}
+
+\citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have realtime rendering in mind, this grid-based approach could be applied to particle-based rendering for situations where the effect requires particles to react to each other based on their proximity. Additionally, ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' \citep{Boulianne2007} meaning this technique would likely benefit from the parallel nature of GPUs.
+
+
+
+Referring to Vulkan and DirectX 12, \citet{Joseph2016} states ``the central focus of this new generation of APIs is to increase the amount of draw calls possible while decreasing the amount of overhead for the CPU.'' We can reinterpret this as graphics programmers to indicate that we should reduce the amount of time that the CPU and GPU are required to communicate, in order to best utilise the hardware. <<<do a related note about non-blocking or minimal-blocking multithreading techniques>>>
+
+
+
+
+After examining the literature, we decided on a [something] implementation based on the techniques of cite, cite, cite, and cite.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{agsm}
+\bibliography{references}
+\end{document}
+
+
+
+
+
