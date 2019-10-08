@@ -1,0 +1,54 @@
+\documentclass[11pt, a4paper, twocolumn]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{titlesec}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage[top=1cm, left=1cm, right=1cm, bottom=2cm]{geometry}
+
+\usepackage{helvet} % Helvetica 'phv'
+\usepackage{mathptmx} % Times 'ptm'
+
+\titleformat{\section}
+    {\sffamily\bfseries\large} % format
+    {\thesection} % label
+    {1em} % label separation
+    {} % before-code
+
+\titleformat{\subsection}
+    {\sffamily\bfseries} % format
+    {\thesubsection} % label
+    {1em} % label separation
+    {} % before-code
+
+\title{\sffamily\bfseries An Exploration of Optimisation Techniques\\for Vulkan-based Particle Systems}
+\author{Robin Wragg}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+\section{Notes}
+\citet{Crawford2018} note that shader compiler optimisation makes a big difference to overall graphics performance. This project could benefit from experimenting with any available shader compilation options. Common optimisations that shader compilers perform are dead code elimination, factoring out conditionals, unrolling loops, coalescing multiple vector element assignments into a single swizzled vector assignment, global value numbering causing variable elimination, and simplifying arithmetic by reordering the statements.
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{agsm}
+\bibliography{references}
+\end{document}
+
+
+
+
+
