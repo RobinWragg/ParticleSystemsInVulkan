@@ -30,10 +30,12 @@
 \maketitle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
-
 \section{Notes}
+"3.3 Rendering sy stem requirements and constraints" of "artist-directable real-time rain etc" has good info on texture compression, vertex compression.
+"3.6.2 Raindrop Particles Rain"
+
+
+\section{Literature Review}
 \citet{Crawford2018} note that shader compiler optimisation makes a big difference to overall graphics performance. Common optimisations that shader compilers can perform are dead code elimination, factoring out conditionals, unrolling loops, coalescing multiple vector element assignments into a single swizzled vector assignment, global value numbering causing variable elimination, and simplifying arithmetic by reordering the statements. Vulkan projects are likely to benefit from tweaking any available shader compilation options.
 
 When producing a simulation of water droplets on a glass pane... \citet{Chen2012}
@@ -44,7 +46,8 @@ When producing a simulation of water droplets on a glass pane... \citet{Chen2012
 
 Referring to Vulkan and DirectX 12, \citet{Joseph2016} states ``the central focus of this new generation of APIs is to increase the amount of draw calls possible while decreasing the amount of overhead for the CPU.'' As graphics programmers, we can reinterpret this to indicate that it is critical to reduce the amount of time that the CPU and GPU are required to block each other to communicate, in order to best utilise the hardware.
 
-Blocking is a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}, and while some amount of blocking between the CPU and GPU is a challenge to overcome, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm especially common in networking that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program. \emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \cite{Herlihy1993} in an attempt to detect whether data corruption had occurred due to simultaneous, conflicting writes or reads. Again, this has a downside of requiring extra work per transaction.
+Blocking is a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}, and while some amount of blocking between the CPU and GPU is a challenge to overcome, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program. \emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \cite{Herlihy1993} in an attempt to detect whether data corruption had occurred due to simultaneous writes or reads. Again, this has a downside of requiring extra work per transaction.
+
 
 (some of these techniques) are very complex; their usefulness must be weighed against the development team's ability to handle the additional complexity, and the cost of time spent implementing it. For this reason, we began implementing the optimisation techniques that appeared to have a good payoff-to-complexity ratio. (make a chart of these ratios?)
 
