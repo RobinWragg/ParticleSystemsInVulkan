@@ -1,3 +1,15 @@
+@article{Gu2015,
+abstract = {Multi-threaded programs are pervasive, yet difficult to write. Missing proper synchronization leads to correctness bugs and over synchronization leads to performance problems. To improve the correctness and efficiency of multi-threaded software, we need a better understanding of synchronization challenges faced by real-world developers. This paper studies the code repositories of open-source multi-threaded software projects to obtain a broad and in- depth view of how developers handle synchronizations. We first examine how critical sections are changed when software evolves by checking over 250,000 revisions of four representative open-source software projects. The findings help us answer questions like how often synchronization is an afterthought for developers; whether it is difficult for devel- opers to decide critical section boundaries and lock variables; and what are real-world over-synchronization problems. We then conduct case studies to better understand (1) how critical sections are changed to solve performance prob- lems (i.e. over-synchronization issues) and (2) how soft- ware changes lead to synchronization-related correctness problems (i.e. concurrency bugs). This in-depth study shows that tool support is needed to help developers tackle over-synchronization problems; it also shows that concur- rency bug avoidance, detection, and testing can be improved through better awareness of code revision history.},
+author = {Gu, Rui and Jin, Guoliang and Song, Linhai and Zhu, Linjie and Lu, Shan},
+doi = {10.1145/2786805.2786815},
+file = {:Users/robin/Desktop/p426-gu.pdf:pdf},
+isbn = {9781450336758},
+journal = {2015 10th Joint Meeting of the European Software Engineering Conference and the ACM SIGSOFT Symposium on the Foundations of Software Engineering, ESEC/FSE 2015 - Proceedings},
+keywords = {Concurrency bugs,Empirical study,Locks,Multi-threaded software,Performance bugs,Repository mining},
+pages = {426--438},
+title = {{What change history tells us about thread synchronization}},
+year = {2015}
+}
 @inproceedings{Fich2004,
 abstract = {The "wait-free hierarchy" classifies multiprocessor synchronization primitives according to their power to solve consensus. The classification is based on assigning a number n to each synchronization primitive, where n is the maximal number of processes for which deterministic wait-free consensus can be solved using instances of the primitive and read write registers. Conditional synchronization primitives, such as Compare-and-Swap and Load-Linked/Store-Conditional, can implement deterministic wait-free consensus for any number of processes (they have consensus number ∞), and are thus considered to be among the strongest synchronization primitives; Compare-and-Swap and Load-Linked/Store-Conditional have consequently became the synchronization primitives of choice, and have been implemented in hardware in many multiprocessor architectures. This paper shows that, though they are strong in the context of consensus, conditional synchronization primitives are not efficient in terms of memory space for implementing many key objects. Our results hold for starvation-free implementations of mutual exclusion, and for wait-free implementations of a large class of concurrent objects, that we call Visible(n). Roughly, Visible(n) is a class that includes all objects that support some operation that must perform a "visible" write before it terminates. Visible(n) includes many useful objects; some examples are: counters, stacks, queues, swap, fetch-and-add, and single-writer snapshot objects. We show that at least n conditional registers are required by any such implementation, even if registers are of unbounded size. We also obtain tradeoffs between time and space for n-process wait-free implementations of any one-time object in Visible(n). All these results hold for both deterministic and randomized implementations. Starvation-free mutual exclusion and wait-free implementations of some objects in Visible(n) (e.g. counters, swap and fetch-and-add) can be implemented by O(1) non-conditional primitives. Thus we believe that basing multiprocessor synchronization solely on conditional synchronization primitives might not be the best design choice.},
 author = {Fich, Faith and Hendler, Danny and Shavit, Nir},
@@ -289,7 +301,7 @@ year = {1990}
 }
 @article{Powell,
 author = {Powell, M L and Kleiman, S R and Barton, S and Shah, D and Stein, D and Weeks, M},
-file = {:Users/robin/Desktop/10.1.1.98.8218.pdf:pdf},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Powell et al. - 1991 - SunOS Multi-thread Architecture.pdf:pdf},
 pages = {1--14},
 title = {{SunOS Multi-thread Architecture}},
 year = {1991}
