@@ -30,31 +30,65 @@
 \maketitle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Notes}
-"3.3 Rendering system requirements and constraints" of "artist-directable real-time rain etc" has good info on texture compression, vertex compression.
-"3.6.2 Raindrop Particles Rain"
+\section{Introduction}
+
+\subsection{Particle Systems}
+
+\subsection{The Vulkan API}
+
+\subsection{Other Topics to Introduce}
+
+If I find that I'm focussing on additional specific areas of research or experimentation, preliminary explanation for those will be written in this subsection.
 
 \section{Literature Review}
 
-literature was pulled from primarily X areas: a, b, and c.
+\subsection{Performance Profiling}
 
 \subsection{Particle System Design}
 
-\citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have real-time rendering in mind, this grid-based approach could be applied to particle-based rendering for situations where the effect requires particles to react to each other based on their proximity. Additionally, ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' \citep{Boulianne2007} meaning this technique would likely benefit from the parallel nature of GPUs.
+\cite{Tatarchuk2006}
+"3.3 Rendering system requirements and constraints" of "artist-directable real-time rain etc" has good info on texture compression, vertex compression.
+"3.6.2 Raindrop Particles Rain"
+
+\citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have real-time graphics in mind, this grid-based approach could be applied to particle-based rendering for situations where the intended effect requires particles to react to each other based on their proximity. Additionally, ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' \citep{Boulianne2007} meaning this technique would likely be appropriate for rendering real-time particle systems and the parallel nature of GPUs.
 
 When producing a simulation of water droplets on a glass pane... \citet{Chen2012}
 
-\subsection{Techniques for Real-time Graphics}
+\subsection{Techniques for Efficient Real-time Graphics}
 
-\citet{Crawford2018} note that shader compiler optimisation can make a modest improvement to graphics performance, but it is highly dependent on shader code itself. With their test suite of GFXBench 4.0 GLSL shaders and the LunarGlass/LLVM optimisation framework, they found that shaders can be sped up by as much as 25\% by finding the best combination of compiler flags, but 1-4\% should be expected in general. Common optimisations that shader compilers can perform are dead code elimination, factoring out conditionals, unrolling loops, coalescing multiple vector element assignments into a single swizzled vector assignment, global value numbering causing variable elimination, and simplifying arithmetic by reordering the statements. The study reviewed only source-to-source optimisations; source-to-machine-code optimisations weren't explored. Further speed-ups could be found in that area.
+\citet{Crawford2018} noted that shader compiler optimisation can make a modest improvement to graphics performance, but it is highly dependent on shader code itself. With their test suite of the LunarGlass/LLVM optimisation framework and the GLSL shaders from GFXBench 4.0, they found that shaders can be sped up by as much as 25\% by finding the best combination of compiler flags, but 1-4\% should be expected in general. Common optimisations that shader compilers can perform are dead code elimination, factoring out conditionals, unrolling loops, coalescing multiple vector element assignments into a single swizzled vector assignment, global value numbering causing variable elimination, and simplifying arithmetic by reordering the statements. The study reviewed only source-to-source optimisations; source-to-machine-code optimisations weren't explored. Further speed-ups could be found in that area.
 
 Referring to Vulkan and DirectX 12, \citet{Joseph2016} states ``the central focus of this new generation of APIs is to increase the amount of draw calls possible while decreasing the amount of overhead for the CPU.'' As graphics programmers, we can reinterpret this to indicate that it is critical to reduce the amount of time that the CPU and GPU are required to block each other to communicate, in order to best utilise the hardware.
 
 \subsection{Multi-threaded Software Design}
 
-Blocked threads are significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. While some amount of blocking between the CPU and GPU is a challenge to overcome, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program. \emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \citep{Herlihy1993} in an attempt to detect whether data corruption had occurred due to simultaneous writes or reads. Again, this has a downside of requiring extra work per transaction.
+(Say "this is what multi-threading is, and this is what it's for.")
+
+Coordination between threads is a necessary characteristic of reliable multi-threaded systems \citep{Powell}. Without coordination, race conditions and simultaneous unsafe memory accesses can occur, leading to unintended, unpredictable behaviour, often resulting in crashes due to memory access violations. Some ways to avoid these issues are presented below.
+
+\textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex. The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| (CITE THE C++ DOCS).
+
+\begin{verbatim}
+int main() {
+  float a = 3.45;
+  char *str = "oaiwjef";
+  return 0;
+}
+\end{verbatim}
+
+\textbf{Semaphores}
+
+Blocked threads, the state of one or more threads waiting for other threads to unblock them, are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. A common blocking situation is where one thread has locked a mutex and is taking significant time to unlock it. Meanwhile, another thread attempts to lock the same mutex. The second thread will be blocked until the first thread has finished its exclusive work.
+
+Although the effects of thread-blocking can be a significant challenge to reduce, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program.
+
+\emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \citep{Herlihy1993} in an attempt to detect whether data corruption had occurred due to simultaneous writes or reads. Again, this has a downside of requiring extra work per transaction.
 
 (some of these techniques) are very complex; their usefulness must be weighed against the development team's ability to handle the additional complexity, and the cost of time spent implementing it. For this reason, we began implementing the optimisation techniques that appeared to have a good benefit-to-complexity ratio. (make a chart of these ratios?)
+
+% good structure from "SunOS Multithread Architecture": The remainder of this paper is divided into N sections. The first section gives an overview of the architecture and introduces our terminology. The second section discusses our design goals and principles. The third section gives additional details of operation and interfaces and how the UNIX process model is reinterpreted in the new environment. The fourth section gives some performance data and operational experience. The last section compares this architecture with others.
+
+\section{Initial Approach}
 
 After examining the literature, we decided on a [something] implementation based on the techniques of cite, cite, cite, and cite.
 
