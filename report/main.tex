@@ -62,29 +62,29 @@ Referring to Vulkan and DirectX 12, \citet{Joseph2016} states ``the central focu
 
 \subsection{Multi-threaded Software Design}
 
-(Say "this is what multi-threading is, and this is what it's for.")
-
 Coordination between threads is a necessary characteristic of reliable multi-threaded systems \citep{Powell}. Without coordination, race conditions and simultaneous unsafe memory accesses can occur, leading to unintended, unpredictable behaviour, often resulting in crashes due to memory access violations. Some ways to avoid these issues are presented below.
 
-\textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex. The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| (CITE THE C++ DOCS).
+\textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. The thread now "owns" the mutex. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex (only the owning thread can unlock a mutex). The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex instead of \verb|lock()|; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex|. % TODO: CITE THE C++ DOCS!
 
-\begin{verbatim}
-int main() {
-  float a = 3.45;
-  char *str = "oaiwjef";
-  return 0;
-}
-\end{verbatim}
+% Paragraph code example
+% \begin{verbatim}
+% int main() {
+%   float a = 3.45;
+%   char *str = "oaiwjef";
+%   return 0;
+% }
+% \end{verbatim}
 
 \textbf{Semaphores}
 
-Blocked threads, the state of one or more threads waiting for other threads to unblock them, are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. A common blocking situation is where one thread has locked a mutex and is taking significant time to unlock it. Meanwhile, another thread attempts to lock the same mutex. The second thread will be blocked until the first thread has finished its exclusive work.
+Blocked threads are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. In the worst case, a \emph{deadlock} can occur when all threads are blocked, waiting on each other indefinitely. In the case of mutexes, a good rule of thumb is to keep the areas of the program that are mutex-guarded as small, simple and fast as possible, to reduce the amount of time that mutexes are locked, thereby reducing the chance of blocked threads.
+% TODO: if semaphores have a separate rule of thumb, move this mutex sentence to the mutex detail above and add the semaphore rule of thumb to the semaphore detail.
 
-Although the effects of thread-blocking can be a significant challenge to reduce, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program.
+Although the effects of thread-blocking can be a significant challenge to remove entirely, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program.
 
 \emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \citep{Herlihy1993} in an attempt to detect whether data corruption had occurred due to simultaneous writes or reads. Again, this has a downside of requiring extra work per transaction.
 
-(some of these techniques) are very complex; their usefulness must be weighed against the development team's ability to handle the additional complexity, and the cost of time spent implementing it. For this reason, we began implementing the optimisation techniques that appeared to have a good benefit-to-complexity ratio. (make a chart of these ratios?)
+% "" (some of these techniques) are very complex; their usefulness must be weighed against the development team's ability to handle the additional complexity, and the cost of time spent implementing it. For this reason, we began implementing the optimisation techniques that appeared to have a good benefit-to-complexity ratio. % TODO: make a chart of these ratios?
 
 % good structure from "SunOS Multithread Architecture": The remainder of this paper is divided into N sections. The first section gives an overview of the architecture and introduces our terminology. The second section discusses our design goals and principles. The third section gives additional details of operation and interfaces and how the UNIX process model is reinterpreted in the new environment. The fourth section gives some performance data and operational experience. The last section compares this architecture with others.
 
