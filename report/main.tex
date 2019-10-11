@@ -46,9 +46,7 @@ If I find that I'm focussing on additional specific areas of research or experim
 
 \subsection{Particle System Design}
 
-\cite{Tatarchuk2006}
-"3.3 Rendering system requirements and constraints" of "artist-directable real-time rain etc" has good info on texture compression, vertex compression.
-"3.6.2 Raindrop Particles Rain"
+% TODO: Current primary particle reference: \cite{Tatarchuk2006} "3.3 Rendering system requirements and constraints" of "artist-directable real-time rain etc" has good info on texture compression, vertex compression. "3.6.2 Raindrop Particles Rain"
 
 \citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have real-time graphics in mind, this grid-based approach could be applied to particle-based rendering for situations where the intended effect requires particles to react to each other based on their proximity. Additionally, ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' \citep{Boulianne2007} meaning this technique would likely be appropriate for rendering real-time particle systems and the parallel nature of GPUs.
 
