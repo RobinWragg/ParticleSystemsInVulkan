@@ -6,46 +6,9 @@
 using namespace std;
 
 #include "linalg.h"
-#include "gui.h"
-#include "mcuLink.h"
 
 SDL_Renderer *renderer;
 int rendererWidth, rendererHeight;
-
-float rotX = 0, rotY = 0, rotZ = 0;
-
-Vec3 transformPoint(Vec3 point) {
-	Mat33 masterMat;
-	
-	// make a 1:100 ratio of world coordinates to pixels and flip the Y axis so positive is up.
-	masterMat.makeScaler(Vec3(100, -100, 100));
-	
-	Mat33 rotMat;
-	
-	rotMat.makeXRotator(rotX);
-	masterMat *= rotMat;
-	
-	rotMat.makeYRotator(rotY);
-	masterMat *= rotMat;
-	
-	rotMat.makeZRotator(rotZ);
-	masterMat *= rotMat;
-	
-	point = masterMat * point;
-	return point + Vec3(rendererWidth/2, rendererHeight/2, 0);
-}
-
-void renderLine(Vec3 lineStart, Vec3 lineEnd) {
-	lineStart = transformPoint(lineStart);
-	lineEnd = transformPoint(lineEnd);
-	SDL_RenderDrawLine(renderer, lineStart.x, lineStart.y, lineEnd.x, lineEnd.y);
-}
-
-void renderTriangle(const Vec3 triangle[]) {
-	renderLine(triangle[0], triangle[1]);
-	renderLine(triangle[1], triangle[2]);
-	renderLine(triangle[2], triangle[0]);
-}
 
 double getTime() {
 	static unsigned long startCount = SDL_GetPerformanceCounter();
@@ -96,8 +59,6 @@ int main(int argc, char* argv[]) {
 	SDL_GetRendererInfo(renderer, &rendererInfo);
 	SDL_GetRendererOutputSize(renderer, &rendererWidth, &rendererHeight);
 	printf("Renderer: %i x %i, %s\n", rendererWidth, rendererHeight, rendererInfo.name);
-	
-	gui::init(window, renderer);
 		
 	bool running = true;
 	while (running) {
@@ -119,74 +80,8 @@ int main(int argc, char* argv[]) {
 		SDL_SetRenderDrawColor(renderer, 0x22, 0x22, 0x22, 0xff);
 		SDL_RenderClear(renderer);
 		
-		// camera
-		rotX = M_PI/8;
-		rotY = 0;
-		rotZ = 0;
-		// rotX = SDL_GetTicks() * 0.0002;
-		// rotY = SDL_GetTicks() * 0.0002;
-		// rotZ = SDL_GetTicks() * 0.0002;
-		
-		// render floor
-		SDL_SetRenderDrawColor(renderer, 0x55, 0x55, 0x55, 0xff);
-		for (int x = -10; x <= 10; x++) {
-			renderLine(Vec3(x, 0, -10), Vec3(x, 0, 10));
-		}
-		
-		for (int z = -10; z <= 10; z++) {
-			renderLine(Vec3(-10, 0, z), Vec3(10, 0, z));
-		}
-		
-		// render unit vectors
-		SDL_SetRenderDrawColor(renderer, 0xff, 0x00, 0x00, 0xff);
-		renderLine(Vec3(0, 0, 0), Vec3(1, 0, 0));
-		SDL_SetRenderDrawColor(renderer, 0x00, 0xff, 0x00, 0xff);
-		renderLine(Vec3(0, 0, 0), Vec3(0, 1, 0));
-		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xff, 0xff);
-		renderLine(Vec3(0, 0, 0), Vec3(0, 0, 1));
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		Vec3 mag = gui::poseSet.tempPose.getMagLatest().value;
-		float buf = mag.x;
-		mag.x = -mag.y;
-		mag.y = -buf;
-		// mag.x *= -1;
-		// mag.y *= -1;
-		float heading;
-		if (mag.y == 0) heading = (mag.x < 0) ? M_PI : 0;
-		else heading = atan2(mag.y, mag.x);
-		
-		// float DECLINATION = 0.11;
-		// heading -= DECLINATION * M_PI / 180;
-		
-		if (heading > M_PI) heading -= (2 * M_PI);
-		else if (heading < -M_PI) heading += (2 * M_PI);
-		else if (heading < 0) heading += 2 * M_PI;
-		
-		rotZ = heading;
 		SDL_SetRenderDrawColor(renderer, 0xff, 0xff, 0xff, 0xff);
-		renderLine(Vec3(0, 0, 0), Vec3(1, 0, 0));
-		renderLine(Vec3(0, 0, 0), Vec3(mag.x, mag.y, 0));
 		
-		
-		
-		
-		
-		
-		
-		
-		gui::render();
 		
 		SDL_RenderPresent(renderer);
 	}
@@ -194,8 +89,6 @@ int main(int argc, char* argv[]) {
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	
-	if (mcuLink::connected()) mcuLink::disconnect();
 	
 	return 0;
 }
