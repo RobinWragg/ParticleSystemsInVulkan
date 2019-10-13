@@ -35,9 +35,17 @@
 
 \section{Introduction}
 
+We are aiming to provide a a collection of appropriate techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines.
+
+Multiprocessors will briefly be explored in the literature review, but we will be focussing on consumer-oriented systems with a single, multi-core CPU and a single GPU throughout this paper.
+
 \subsection{Particle Systems}
 
 \subsection{The Vulkan API}
+
+Vulkan is a cross-platform Application Programming Interface for rendering 3D graphics in real-time. It is developed by the non-profit consortium, the Khronos Group. Along with its contemporaries, Microsoft DirectX 12 and Apple Metal, it was developed to provide a better balance in workload between the CPU and GPU, in response to its precursors, older APIs, namely DirectX 11 and OpenGL, which were often bottlenecked by the single-threaded performance of the CPU.
+
+Vulkan is a much more explicit API, potentially putting a greater mental load on the programmer but likely to give the programmer greater control over the graphics processor, which should limit executional uncertainty and provide high performance overhead.
 
 \subsection{Other Topics to Introduce}
 
@@ -93,7 +101,9 @@ Although the effects of thread-blocking can be a significant challenge to remove
 
 After examining the literature, we decided on a [something] implementation based on the techniques of cite, cite, cite, and cite.
 
-
+% Intel Core i5 6400
+% Nvidia Geforce GTX 1060 3GB
+% 8GB ***** RAM
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
