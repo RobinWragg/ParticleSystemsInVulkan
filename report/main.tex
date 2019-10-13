@@ -5,6 +5,8 @@
 \usepackage{natbib}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage[font={small, it}, labelfont=bf, center]{caption}
 \usepackage[top=1cm, left=1cm, right=1cm, bottom=2cm]{geometry}
 
 \usepackage{helvet} % Helvetica 'phv'
@@ -41,7 +43,9 @@ Multiprocessors will briefly be explored in the literature review, but we will b
 
 \subsection{Particle Systems}
 
-Various ephemeral phenomena, including fire, rain and smoke, can be challenging to render realistically and efficiently using the mesh-of-triangles approach that is used for solid objects. To create an accurate simulation of liquids and gases in particular is impossible to do in real-time, because it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems. The technique involves rendering many emph{particles} per frame; the number of particles is dependant on the intended realism/quality and the required rendering speed.
+Various ephemeral phenomena, including fire, rain and smoke, can be challenging to render realistically and efficiently using the mesh-of-triangles approach that is used for solid objects.
+
+To create an accurate simulation of liquids and gases in particular is impossible to do in real-time, because it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems. The technique involves rendering many emph{particles} per frame; the number of particles is dependant on the intended realism/quality and the required rendering speed.
 
 A particle can be any simple, renderable object; emph{billboards} (flat, textured polygons that always face the camera) are perhaps the most common kind of particle, and can represent an individual droplet of rain or a section of a cloud. But a particle can be anything the framerate allows; full-blown meshes can be used, if the amount and complexity are low enough for real-time rendering.
 
@@ -55,7 +59,13 @@ Vulkan is a cross-platform Application Programming Interface for rendering 3D gr
 
 Concurrent execution is the very common technique in modern computing of running multiple threads in a single program; the effect is equivalent to two or more processes with access to the same memory. This allows a CPU with multiple cores to run more than one of these threads at once.
 
-As it became more difficult for manufacturers to increase the clock speeds of CPU cores, more cores were added instead. Nowadays, all consumer CPUs have at least two physical cores, so the performance of a program can be half of its potential if it doesn't utilise multiple threads effectively in its performance-critical sections. Or inversely, a single-threaded program that requires one second of CPU time can reach certain fractions of that time if rewritten as a multi-threaded program (Fig. 1).
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{cpu_cores}
+\caption{Theoretical execution time of a program that requires one second of CPU time by core count.}
+\label{fig:cpu_cores}
+\end{figure}
+
+As it became more difficult for manufacturers to increase the clock speeds of CPU cores, more cores were added instead. Nowadays, all consumer CPUs have at least two physical cores, so the performance of a program can be half of its potential if it doesn't utilise multiple threads effectively in its performance-critical sections. Or inversely, a single-threaded program that requires one second of CPU time can reach a fraction of that time if rewritten as a multi-threaded program, but more cores yield diminishing returns (see Figure \ref{fig:cpu_cores}).
 
 % TODO: General vulkan pipeline overview; fairly brief and abstract.
 
@@ -85,7 +95,7 @@ Referring to Vulkan and DirectX 12, \citet{Joseph2016} states ``the central focu
 
 Coordination between threads is a necessary characteristic of reliable multi-threaded systems \citep{Powell}. Without coordination, race conditions and simultaneous unsafe memory accesses can occur, leading to unintended, unpredictable behaviour, often resulting in crashes due to memory access violations. Some ways to avoid these issues are presented below.
 
-\textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. The thread now "owns" the mutex. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex (only the owning thread can unlock a mutex). The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex instead of \verb|lock()|; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| \citep{CppMutex}.
+\textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. The thread now "owns" the mutex. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex (only the owning thread can unlock a mutex). The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex instead of \verb|lock()|; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| \citep{CppMutex}. % TODO: CITE THE C++ DOCS! https://en.cppreference.com/w/cpp/thread/mutex
 
 % Paragraph code example
 % \begin{verbatim}
