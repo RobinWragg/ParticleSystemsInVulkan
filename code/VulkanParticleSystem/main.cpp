@@ -115,6 +115,8 @@ void getVkPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 			*deviceOut = device;
 		}
 	}
+	
+	SDL_assert(*deviceOut != VK_NULL_HANDLE);
 }
 
 int main(int argc, char* argv[]) {
