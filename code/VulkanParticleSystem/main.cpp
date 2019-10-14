@@ -1,5 +1,7 @@
-#include <SDL.h>
 #include <cstdio>
+#include <vector>
+#include <SDL.h>
+#include <SDL_vulkan.h>
 
 using namespace std;
 
@@ -16,14 +18,28 @@ int main(int argc, char* argv[]) {
 	SDL_assert(result == 0);
 
 	//
-	// create window
+	// create a 4:3 720p window
 	//
-	int windowWidth = 800;
-	int windowHeight = 600;
+	int windowWidth = 960;
+	int windowHeight = 720;
 
 	SDL_Window *window = SDL_CreateWindow(
-		"Vulkan Particle System", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, 0);
+		"Vulkan Particle System", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_VULKAN);
 	SDL_assert(window != NULL);
+
+	//
+	// Get Vulkan instance extensions
+	//
+	unsigned int extensionCount;
+	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
+
+	vector<const char*> extensionNames(extensionCount);
+	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensionNames.data());
+
+	for (auto &name : extensionNames) {
+		printf("VK extension: %s\n", name);
+	}
+
 
 	//
 	// create renderer
