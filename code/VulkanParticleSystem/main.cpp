@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
 	int windowHeight = 600;
 
 	SDL_Window *window = SDL_CreateWindow(
-		"sdl3d", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, 0);
+		"Vulkan Particle System", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, 0);
 	SDL_assert(window != NULL);
 
 	//
