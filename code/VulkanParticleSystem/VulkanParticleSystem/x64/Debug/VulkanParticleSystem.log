@@ -1,0 +1,3 @@
+﻿  main.cpp
+c:\users\robin\desktop\particlesystemsinvulkan\code\vulkanparticlesystem\vulkanparticlesystem\main.cpp(10): warning C4244: 'initializing': conversion from 'Uint64' to 'unsigned long', possible loss of data
+  VulkanParticleSystem.vcxproj -> C:\Users\Robin\Desktop\ParticleSystemsInVulkan\code\VulkanParticleSystem\x64\Debug\VulkanParticleSystem.exe
