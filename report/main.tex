@@ -37,15 +37,15 @@
 
 \section{Introduction}
 
-We are aiming to provide a a collection of appropriate techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines.
+The aim of this project is to research and experiment with techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines. The literature is explored and the discovered techniques are applied to our own program, a particle system built in C++ and Vulkan. From this experience, and independent experimentation, we will collect and document the most appropriate techniques.
 
 Multiprocessors will briefly be explored in the literature review, but we will be focussing on consumer-oriented systems with a single, multi-core CPU and a single GPU throughout this paper.
 
 \subsection{Particle Systems}
 
-Various ephemeral phenomena, including fire, rain and smoke, can be challenging to render realistically and efficiently using the mesh-of-triangles approach that is used for solid objects.
+Various ephemeral phenomena such as fire, rain, explosions and smoke can be challenging to render convincingly and efficiently using the mesh-of-triangles approach that is used for solid objects.
 
-To create an accurate simulation of liquids and gases in particular is impossible to do in real-time, because it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems. The technique involves rendering many emph{particles} per frame; the number of particles is dependant on the intended realism/quality and the required rendering speed.
+To create an accurate simulation of these phenomena is impossible to do in real-time, because it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems. The technique involves rendering many emph{particles} per frame; the number of particles is dependant on the intended realism/quality and the required rendering speed. Particle systems are more versatile than just a way to simulate realistic visual effects; they often used to render unrealistic phenomena, such as magical effects.
 
 A particle can be any simple, renderable object; emph{billboards} (flat, textured polygons that always face the camera) are perhaps the most common kind of particle, and can represent an individual droplet of rain or a section of a cloud. But a particle can be anything the framerate allows; full-blown meshes can be used, if the amount and complexity are low enough for real-time rendering.
 
@@ -54,6 +54,8 @@ Particle systems are a useful environment for experimenting with performance bec
 \subsection{The Vulkan API}
 
 Vulkan is a cross-platform Application Programming Interface for rendering 3D graphics in real-time. It is developed by the non-profit consortium, the Khronos Group. Along with its contemporaries, Microsoft DirectX 12 and Apple Metal, it was developed to provide a better balance in workload between the CPU and GPU, in response to its precursors, older APIs, namely DirectX 11 and OpenGL, which were often bottlenecked by the single-threaded performance of the CPU.
+
+% TODO: General vulkan pipeline overview; fairly brief and abstract.
 
 \subsection{Multi-threading}
 
