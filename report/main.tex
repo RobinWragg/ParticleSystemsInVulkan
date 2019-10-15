@@ -37,7 +37,7 @@
 
 \section{Introduction}
 
-The aim of this project is to research and experiment with techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines. The literature is explored and the discovered techniques are applied to our own program, a particle system built in C++ and Vulkan. From this experience, and independent experimentation, we will collect and document the most appropriate techniques.
+The aim of this project is to research and experiment with techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines. The literature is explored and the discovered techniques are applied to our own program, a particle system built in C++ and Vulkan. From this experience, and independent experimentation, we will collect and document the most appropriate techniques for easy consumption by those who may be considering implementing or improving their own particle system and/or Vulkan pipeline.
 
 Multiprocessors will briefly be explored in the literature review, but we will be focussing on consumer-oriented systems with a single, multi-core CPU and a single GPU throughout this paper.
 
@@ -51,11 +51,15 @@ A particle can be any simple, renderable object; emph{billboards} (flat, texture
 
 Particle systems are a useful environment for experimenting with performance because the faster the particles render, the more particles are able to rendered without a noticeable drop in framerate, allowing improved visual results. This quantitative nature makes them appropriate for quantifying the performance impact of any changes made to the program.
 
+\subsection{Real-time Graphics Pipelines}
+
+% TODO
+
 \subsection{The Vulkan API}
 
-Vulkan is a cross-platform Application Programming Interface for rendering 3D graphics in real-time. It is developed by the non-profit consortium, the Khronos Group. Along with its contemporaries, Microsoft DirectX 12 and Apple Metal, it was developed to provide a better balance in workload between the CPU and GPU, in response to its precursors, older APIs, namely DirectX 11 and OpenGL, which were often bottlenecked by the single-threaded performance of the CPU.
+Vulkan is a cross-platform Application Programming Interface for rendering 3D graphics in real-time. It is developed by the non-profit consortium, the Khronos Group. Along with its contemporaries, Microsoft DirectX 12 and Apple Metal, it exists to provide graphics programmers with more control over the entire graphics pipeline, enabling a better balance in workload between the CPU and GPU. This was in response to its precursors, namely DirectX 11 and OpenGL, which were often bottlenecked by the single-threaded performance of the CPU.
 
-% TODO: General vulkan pipeline overview; fairly brief and abstract.
+% TODO: Mention SPIR-V etc?
 
 \subsection{Multi-threading}
 
@@ -63,16 +67,16 @@ Concurrent execution is the very common technique in modern computing of running
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{cpu_cores}
-\caption{Theoretical execution time of a program that requires one second of CPU time by core count.}
+\caption{Theoretical best-case execution time of a program that requires one second of CPU time, by CPU core count.}
 \label{fig:cpu_cores}
 \end{figure}
 
-As it became more difficult for manufacturers to increase the clock speeds of CPU cores, more cores were added instead. Nowadays, all consumer CPUs have at least two physical cores, so the performance of a program can be half of its potential if it doesn't utilise multiple threads effectively in its performance-critical sections. Or inversely, a single-threaded program that requires one second of CPU time can reach a fraction of that time if rewritten as a multi-threaded program, but more cores yield diminishing returns (see Figure \ref{fig:cpu_cores}).
+All modern consumer CPUs have at least two physical cores, so the performance of a program can be half of its potential if it doesn't utilise multiple threads effectively in its performance-critical sections. Or inversely, a single-threaded program that requires one second of CPU time can reach a fraction of that time if rewritten as a multi-threaded program, but every additional core yields diminishing returns (see Figure \ref{fig:cpu_cores}).
 
 
 \subsection{Other Topics to Introduce}
 
-If I find that I'm focussing on additional specific areas of research or experimentation, preliminary explanation for those will be written in this subsection.
+(If I find that I'm focussing on additional specific areas of research or experimentation, preliminary explanation for those will be written in this subsection.)
 
 \section{Literature Review}
 
@@ -107,7 +111,7 @@ Coordination between threads is a necessary characteristic of reliable multi-thr
 % }
 % \end{verbatim}
 
-\textbf{Semaphores}
+\textbf{Semaphores} (todo)
 
 Blocked threads are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. In the worst case, a \emph{deadlock} can occur when all threads are blocked, waiting on each other indefinitely. In the case of mutexes, a good rule of thumb is to keep the areas of the program that are mutex-guarded as small, simple and fast as possible, to reduce the amount of time that mutexes are locked, thereby reducing the chance of blocked threads.
 % TODO: if semaphores have a separate rule of thumb, move this mutex sentence to the mutex detail above and add the semaphore rule of thumb to the semaphore detail.
@@ -120,18 +124,25 @@ Although the effects of thread-blocking can be a significant challenge to remove
 
 % good structure from "SunOS Multithread Architecture": The remainder of this paper is divided into N sections. The first section gives an overview of the architecture and introduces our terminology. The second section discusses our design goals and principles. The third section gives additional details of operation and interfaces and how the UNIX process model is reinterpreted in the new environment. The fourth section gives some performance data and operational experience. The last section compares this architecture with others.
 
-\section{Initial Approach}
+\section{Methodology}
 
-After examining the literature, we decided on a [something] implementation based on the techniques of cite, cite, cite, and cite.
+% After examining the literature, we decided on a [something] implementation based on the techniques of cite, cite, cite, and cite.
 
-% Intel Core i5 6400
-% Nvidia Geforce GTX 1060 3GB
-% 8GB ***** RAM
+\subsection{Equipment}
+
+% TODO: rephrase this like a built a PC specifically for this project?
+We will be designing, profiling and optimising the program for desktop computer with an Intel Core i5 6400 at 2.7-3.3 GHz with four cores, 8GB of DDR4 RAM at (what frequency?) and an Nvidia Geforce GTX 1060 3GB. This  graphics card is the most common among Steam users with a 14.5\% share at the time of writing \citep{SteamSurvey}. Valve/Steam's published data on their users' CPUs suggests that at least 25\% of users own a CPU with the same core count and a similar frequency as our i5 6400. 8GB is also the most popular memory amount at 37.1\% of users, so this setup in all should give us a good example of how this program would perform on an average user's system.
+
+% TODO: Note about the CPU not having more threads than cores? (4:4)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliographystyle{agsm}
 \bibliography{mendeley_refs, other_refs}
+
+% TODO: appendix entry with full details of the computer - include the protocol and theoretical speed of the GPU's bus etc.
+% TODO: appendix entry with notes on Vulkan on macOS with MoltenVK
+
 \end{document}
 
 
