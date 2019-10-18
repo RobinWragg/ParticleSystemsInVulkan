@@ -16,6 +16,10 @@ vector<const char*> requiredValidationLayers = {
 	// "VK_LAYER_KHRONOS_validation"
 };
 
+vector<const char*> requiredDeviceExtensions = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 SDL_Renderer *renderer;
 int rendererWidth, rendererHeight;
 
@@ -84,14 +88,26 @@ void createVkInstance(SDL_Window *window, VkInstance *instanceOut) {
 	SDL_assert(instanceCreationResult == VK_SUCCESS);
 }
 
-vector<VkExtensionProperties> getPhysicalDeviceExtensions(VkPhysicalDevice device) {
-	uint32_t extensionCount;
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+bool deviceHasExtensions(VkPhysicalDevice device, vector<const char*> requiredExtensions) {
+	uint32_t availableExtensionCount;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &availableExtensionCount, nullptr);
+	std::vector<VkExtensionProperties> availableExtensions(availableExtensionCount);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &availableExtensionCount, availableExtensions.data());
 
-	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+	for (auto &requiredExt : requiredExtensions) {
+		bool found = false;
 
-	return availableExtensions;
+		for (auto &availableExt : availableExtensions) {
+			if (strcmp(requiredExt, availableExt.extensionName) == 0) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) return false;
+	}
+
+	return true;
 }
 
 void getPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
@@ -109,22 +125,12 @@ void getPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 		VkPhysicalDeviceProperties properties;
 		vkGetPhysicalDeviceProperties(device, &properties);
 
-		if (VK_VERSION_MAJOR(properties.apiVersion) >= 1 && VK_VERSION_MINOR(properties.apiVersion) >= 1) {
+		if (VK_VERSION_MAJOR(properties.apiVersion) >= 1
+			&& VK_VERSION_MINOR(properties.apiVersion) >= 1
+			&& deviceHasExtensions(device, requiredDeviceExtensions)) {
 			
-			auto extensions = getPhysicalDeviceExtensions(device);
-			
-			bool foundSwapchain = false;
-			for (auto &ext : extensions) {
-				if (strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, ext.extensionName) == 0) {
-					foundSwapchain = true;
-					break;
-				}
-			}
-
-			if (foundSwapchain) {
-				*deviceOut = device;
-				break;
-			}
+			*deviceOut = device;
+			break;
 		}
 	}
 	
@@ -212,6 +218,10 @@ void createLogicalDevice(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, 
 	deviceCreateInfo.queueCreateInfoCount = (uint32_t)queueInfos.size();
 
 	deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
+
+	// Enable extensions
+	deviceCreateInfo.enabledExtensionCount = (int)requiredDeviceExtensions.size();
+	deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
 
 	uint32_t layerCount;
 	VkResult result = vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, nullptr);
