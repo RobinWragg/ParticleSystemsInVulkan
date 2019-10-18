@@ -20,7 +20,7 @@ SDL_Renderer *renderer;
 int rendererWidth, rendererHeight;
 
 double getTime() {
-	static unsigned long startCount = SDL_GetPerformanceCounter();
+	static uint64_t startCount = SDL_GetPerformanceCounter();
 	return (SDL_GetPerformanceCounter() - startCount) / (double)SDL_GetPerformanceFrequency();
 }
 
@@ -71,9 +71,13 @@ void createVkInstance(const char* appName, SDL_Window *window, VkInstance *insta
 
 	unsigned int extensionCount;
 	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-
 	vector<const char*> extensionNames(extensionCount);
 	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensionNames.data());
+
+	printf("\nExtension list from SDL_Vulkan_GetInstanceExtensions():\n");
+	for (const auto& name : extensionNames) {
+		printf("\t%s\n", name);
+	}
 
 	createInfo.enabledExtensionCount = extensionCount;
 	createInfo.ppEnabledExtensionNames = extensionNames.data();
@@ -129,7 +133,7 @@ void getVkPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 
 }
 
-int getGraphicsQueueFamilyIndex(VkPhysicalDevice device) {
+int getGraphicsQueueFamilyIndex(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
@@ -144,6 +148,11 @@ int getGraphicsQueueFamilyIndex(VkPhysicalDevice device) {
 
 		if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			printf("graphics ");
+
+			VkBool32 familySupportsSurface;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &familySupportsSurface);
+			SDL_assert(familySupportsSurface == VK_TRUE);
+
 			graphicsFamilyIndex = i;
 		}
 		
@@ -156,25 +165,72 @@ int getGraphicsQueueFamilyIndex(VkPhysicalDevice device) {
 	return graphicsFamilyIndex;
 }
 
-void createLogicalDevice(VkPhysicalDevice physicalDevice, VkDevice *logicalDeviceOut, VkQueue *graphicsQueueOut) {
-	*logicalDeviceOut = VK_NULL_HANDLE;
-	
-	// Create one graphics queue
-	VkDeviceQueueCreateInfo queueCreateInfo = {};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = getGraphicsQueueFamilyIndex(physicalDevice);
-	queueCreateInfo.queueCount = 1;
+int getQueueFamilyIndex(VkPhysicalDevice device, VkQueueFlagBits requiredFlags, VkSurfaceKHR *surfaceToSupport) {
+	uint32_t familyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &familyCount, nullptr);
+	std::vector<VkQueueFamilyProperties> families(familyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &familyCount, families.data());
+
+	// Choose the first queue family that has the required support
+	for (int index = 0; index < families.size(); index++) {
+		if (!requiredFlags || (families[index].queueFlags & requiredFlags)) {
+			if (surfaceToSupport) {
+				VkBool32 familySupportsSurface;
+				vkGetPhysicalDeviceSurfaceSupportKHR(device, index, *surfaceToSupport, &familySupportsSurface);
+
+				// Family doesn't support the surface, so skip it
+				if (familySupportsSurface == VK_FALSE) continue;
+			}
+
+			return index;
+		}
+	}
+
+	return -1;
+}
+
+VkDeviceQueueCreateInfo buildQueueCreateInfo(int queueFamilyIndex) {
+	VkDeviceQueueCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	info.queueFamilyIndex = queueFamilyIndex;
+	info.queueCount = 1;
 
 	float queuePriority = 1.0f;
-	queueCreateInfo.pQueuePriorities = &queuePriority;
+	info.pQueuePriorities = &queuePriority;
+
+	return info;
+}
+
+vector<VkDeviceQueueCreateInfo> buildQueueCreateInfos(VkPhysicalDevice device, VkSurfaceKHR surface) {
+
+	// Get a family that supports graphics. Doesn't need to support surface presentation, so the surface parameter is null.
+	int graphicsFamilyIndex = getQueueFamilyIndex(device, VK_QUEUE_GRAPHICS_BIT, nullptr);
+	SDL_assert(graphicsFamilyIndex >= 0);
+
+	// Get a family that supports presenting to the surface. No flags are required for this.
+	int surfaceFamilyIndex = getQueueFamilyIndex(device, (VkQueueFlagBits)0, &surface);
+	SDL_assert(surfaceFamilyIndex >= 0);
+
+	vector<VkDeviceQueueCreateInfo> infos = {
+		buildQueueCreateInfo(graphicsFamilyIndex),
+		buildQueueCreateInfo(surfaceFamilyIndex)
+	};
+
+	return infos;
+}
+
+void createLogicalDevice(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkDevice *logicalDeviceOut, VkQueue *graphicsQueueOut, VkQueue *surfaceQueueOut) {
+	*logicalDeviceOut = VK_NULL_HANDLE;
+	
+	auto queueCreateInfos = buildQueueCreateInfos(physicalDevice, surface);
 
 	VkPhysicalDeviceFeatures enabledFeatures = {};
 
 	VkDeviceCreateInfo deviceCreateInfo = {};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
-	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+	deviceCreateInfo.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
 
 	deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
 
@@ -198,10 +254,10 @@ void createLogicalDevice(VkPhysicalDevice physicalDevice, VkDevice *logicalDevic
 
 	printf("\nCreated logical device\n");
 
-	// Get a handle to the queue we just created
-	int queueIndex = 0; // Only one queue was created, so this is 0.
-	vkGetDeviceQueue(*logicalDeviceOut, queueCreateInfo.queueFamilyIndex, queueIndex, graphicsQueueOut);
-	SDL_assert(*graphicsQueueOut != VK_NULL_HANDLE);
+	// Get handles to the new queues
+	//int queueIndex = 0; // Only one queue was created, so this is 0.
+	//vkGetDeviceQueue(*logicalDeviceOut, queueCreateInfo.queueFamilyIndex, queueIndex, graphicsQueueOut);
+	//SDL_assert(*graphicsQueueOut != VK_NULL_HANDLE);
 }
 
 int main(int argc, char* argv[]) {
@@ -209,6 +265,8 @@ int main(int argc, char* argv[]) {
 
 	int result = SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_assert(result == 0);
+
+	double appStartTime = getTime();
 
 	// create a 4:3 SDL window
 	int windowWidth = 1200;
@@ -221,12 +279,21 @@ int main(int argc, char* argv[]) {
 	VkInstance vkInstance;
 	createVkInstance(appName, window, &vkInstance);
 
+	VkSurfaceKHR surface;
+	bool surfaceCreationResult = SDL_Vulkan_CreateSurface(window, vkInstance, &surface);
+	SDL_assert(surfaceCreationResult);
+	printf("Created surface\n");
+
 	VkPhysicalDevice physicalDevice;
 	getVkPhysicalDevice(vkInstance, &physicalDevice);
 
 	VkDevice device;
 	VkQueue graphicsQueue;
-	createLogicalDevice(physicalDevice, &device, &graphicsQueue);
+	VkQueue surfaceQueue;
+	createLogicalDevice(physicalDevice, surface, &device, &graphicsQueue, &surfaceQueue);
+
+	int setupTimeMs = (int)((getTime() - appStartTime) * 1000);
+	printf("\nSetup took %ims\n", setupTimeMs);
 
 	bool running = true;
 	while (running) {
@@ -246,6 +313,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	vkDestroyDevice(device, nullptr);
+	vkDestroySurfaceKHR(vkInstance, surface, nullptr);
 	vkDestroyInstance(vkInstance, nullptr);
 
 	SDL_DestroyWindow(window);
