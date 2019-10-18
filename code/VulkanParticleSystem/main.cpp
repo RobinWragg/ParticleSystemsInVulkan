@@ -12,10 +12,8 @@
 
 using namespace std;
 
-bool enableValidationLayers = true;
-
-vector<const char*> validationLayers = {
-	"VK_LAYER_KHRONOS_validation"
+vector<const char*> requiredValidationLayers = {
+	// "VK_LAYER_KHRONOS_validation"
 };
 
 SDL_Renderer *renderer;
@@ -33,7 +31,12 @@ bool checkValidationLayerSupport() {
 	std::vector<VkLayerProperties> availableLayers(layerCount);
 	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-	for (const char* layerName : validationLayers) {
+	printf("\nAvailable layers:\n");
+	for (const auto& layer : availableLayers) {
+		printf("\t%s\n", layer.layerName);
+	}
+
+	for (const char* layerName : requiredValidationLayers) {
 		bool layerFound = false;
 
 		for (const auto& layerProperties : availableLayers) {
@@ -52,7 +55,7 @@ bool checkValidationLayerSupport() {
 }
 
 void createVkInstance(const char* appName, SDL_Window *window, VkInstance *instanceOut) {
-	SDL_assert(!enableValidationLayers || checkValidationLayerSupport());
+	SDL_assert(checkValidationLayerSupport());
 
 	// App info. TODO: Much of this appInfo may be inessential
 	VkApplicationInfo appInfo = {};
@@ -75,10 +78,8 @@ void createVkInstance(const char* appName, SDL_Window *window, VkInstance *insta
 	createInfo.enabledExtensionCount = extensionCount;
 	createInfo.ppEnabledExtensionNames = extensionNames.data();
 
-	if (enableValidationLayers) {
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
-	} else createInfo.enabledLayerCount = 0;
+	createInfo.enabledLayerCount = (int)requiredValidationLayers.size();
+	createInfo.ppEnabledLayerNames = requiredValidationLayers.data();
 
 	VkResult instanceCreationResult = vkCreateInstance(&createInfo, nullptr, instanceOut);
 	SDL_assert(instanceCreationResult == VK_SUCCESS);
@@ -90,8 +91,9 @@ void createVkInstance(const char* appName, SDL_Window *window, VkInstance *insta
 
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 
+	printf("\nAvailable extensions:\n");
 	for (const auto& extension : extensions) {
-		printf("Available extension: %s\n", extension.extensionName);
+		printf("\t%s\n", extension.extensionName);
 	}
 }
 
@@ -105,6 +107,8 @@ void getVkPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+	printf("\nAvailable devices (Vulkan v1.1):\n");
+
 	// This picks any device that supports Vulkan 1.1 (this resolves to the GTX 1060 3GB on my testing hardware).
 	for (auto &device : devices) {
 		VkPhysicalDeviceProperties properties;
@@ -112,11 +116,35 @@ void getVkPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 
 		if (VK_VERSION_MAJOR(properties.apiVersion) >= 1
 			&& VK_VERSION_MINOR(properties.apiVersion) >= 1) {
+			printf("\t%s\n", properties.deviceName);
 			*deviceOut = device;
 		}
 	}
 	
 	SDL_assert(*deviceOut != VK_NULL_HANDLE);
+
+	VkPhysicalDeviceProperties properties;
+	vkGetPhysicalDeviceProperties(*deviceOut, &properties);
+	printf("\nChosen device: %s\n", properties.deviceName);
+}
+
+void queryQueueFamilies(VkPhysicalDevice device) {
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	printf("\nQueue families:\n");
+	for (auto &family : queueFamilies) {
+		printf("\tNumber of queues: %i. Support: ", family.queueCount);
+
+		if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT) printf("graphics ");
+		if (family.queueFlags & VK_QUEUE_COMPUTE_BIT) printf("compute ");
+		if (family.queueFlags & VK_QUEUE_TRANSFER_BIT) printf("transfer ");
+		if (family.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) printf("sparse binding ");
+		printf("\n");
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -136,26 +164,10 @@ int main(int argc, char* argv[]) {
 	VkInstance vkInstance;
 	createVkInstance(appName, window, &vkInstance);
 
-	VkPhysicalDevice vkPhysicalDevice;
-	getVkPhysicalDevice(vkInstance, &vkPhysicalDevice);
+	VkPhysicalDevice physicalDevice;
+	getVkPhysicalDevice(vkInstance, &physicalDevice);
 
-	// Query queue families
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(vkPhysicalDevice, &queueFamilyCount, nullptr);
-	printf("%i queue families available\n", queueFamilyCount);
-	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(vkPhysicalDevice, &queueFamilyCount, queueFamilies.data());
-
-	printf("Queue Families:\n");
-	for (auto &family : queueFamilies) {
-		printf("Number of queues: %i. Support: ", family.queueCount);
-
-		if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT) printf("graphics ");
-		if (family.queueFlags & VK_QUEUE_COMPUTE_BIT) printf("compute ");
-		if (family.queueFlags & VK_QUEUE_TRANSFER_BIT) printf("transfer ");
-		if (family.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) printf("sparse binding ");
-		printf("\n");
-	}
+	queryQueueFamilies(physicalDevice);
 	
 	bool running = true;
 	while (running) {
