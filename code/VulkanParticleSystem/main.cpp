@@ -171,6 +171,7 @@ VkDeviceQueueCreateInfo buildQueueCreateInfo(VkPhysicalDevice device, VkQueueFla
 			}
 
 			selectedIndex = index;
+			break;
 		}
 	}
 
@@ -232,9 +233,11 @@ void createLogicalDevice(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, 
 	int queueIndex = 0; // Only one queue per VkDeviceQueueCreateInfo was created, so this is 0.
 	vkGetDeviceQueue(*logicalDeviceOut, graphicsQueueInfo.queueFamilyIndex, queueIndex, graphicsQueueOut);
 	SDL_assert(*graphicsQueueOut != VK_NULL_HANDLE);
+	printf("\nCreated graphics queue at family index %i\n", graphicsQueueInfo.queueFamilyIndex);
 
 	vkGetDeviceQueue(*logicalDeviceOut, surfaceQueueInfo.queueFamilyIndex, queueIndex, surfaceQueueOut);
 	SDL_assert(*surfaceQueueOut!= VK_NULL_HANDLE);
+	printf("\nCreated surface queue at family index %i\n", surfaceQueueInfo.queueFamilyIndex);
 }
 
 void initVulkan(SDL_Window *window, VkInstance *instanceOut, VkSurfaceKHR *surfaceOut, VkDevice *deviceOut) {
