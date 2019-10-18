@@ -110,7 +110,31 @@ bool deviceHasExtensions(VkPhysicalDevice device, vector<const char*> requiredEx
 	return true;
 }
 
-void getPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
+bool deviceSupportsAcceptableSwapchain(VkPhysicalDevice device, VkSurfaceKHR surface) {
+	VkSurfaceCapabilitiesKHR capabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
+
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+	vector<VkSurfaceFormatKHR> formats(formatCount);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
+
+	printf("\nImage count capability of %i to %i\n", capabilities.minImageCount, capabilities.maxImageCount);
+
+
+
+
+
+
+	uint32_t presentModeCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+	vector<VkPresentModeKHR> presentModes(presentModeCount);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
+
+	return false;
+}
+
+void getPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice *deviceOut) {
 	*deviceOut = VK_NULL_HANDLE;
 
 	uint32_t deviceCount = 0;
@@ -127,7 +151,8 @@ void getPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 
 		if (VK_VERSION_MAJOR(properties.apiVersion) >= 1
 			&& VK_VERSION_MINOR(properties.apiVersion) >= 1
-			&& deviceHasExtensions(device, requiredDeviceExtensions)) {
+			&& deviceHasExtensions(device, requiredDeviceExtensions)
+			&& deviceSupportsAcceptableSwapchain(device, surface)) {
 			
 			*deviceOut = device;
 			break;
@@ -139,7 +164,6 @@ void getPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 	VkPhysicalDeviceProperties properties;
 	vkGetPhysicalDeviceProperties(*deviceOut, &properties);
 	printf("\nChosen device: %s\n", properties.deviceName);
-
 }
 
 void printQueueFamilies(VkPhysicalDevice device) {
@@ -262,7 +286,7 @@ void initVulkan(SDL_Window *window, VkInstance *instanceOut, VkSurfaceKHR *surfa
 	printf("\nCreated surface\n");
 
 	VkPhysicalDevice physicalDevice;
-	getPhysicalDevice(*instanceOut, &physicalDevice);
+	getPhysicalDevice(*instanceOut, *surfaceOut, &physicalDevice);
 
 	VkQueue graphicsQueue;
 	VkQueue surfaceQueue;
