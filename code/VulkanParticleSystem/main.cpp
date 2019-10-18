@@ -126,25 +126,72 @@ void getVkPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 	VkPhysicalDeviceProperties properties;
 	vkGetPhysicalDeviceProperties(*deviceOut, &properties);
 	printf("\nChosen device: %s\n", properties.deviceName);
+
 }
 
-void queryQueueFamilies(VkPhysicalDevice device) {
+int getGraphicsQueueFamilyIndex(VkPhysicalDevice device) {
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
 	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-	printf("\nQueue families:\n");
-	for (auto &family : queueFamilies) {
-		printf("\tNumber of queues: %i. Support: ", family.queueCount);
+	int graphicsFamilyIndex = -1;
 
-		if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT) printf("graphics ");
-		if (family.queueFlags & VK_QUEUE_COMPUTE_BIT) printf("compute ");
-		if (family.queueFlags & VK_QUEUE_TRANSFER_BIT) printf("transfer ");
-		if (family.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) printf("sparse binding ");
+	printf("\nDevice has these queue families:\n");
+	for (int i = 0; i < queueFamilies.size(); i++) {
+		printf("\tNumber of queues: %i. Support: ", queueFamilies[i].queueCount);
+
+		if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			printf("graphics ");
+			graphicsFamilyIndex = i;
+		}
+		
+		if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) printf("compute ");
+		if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) printf("transfer ");
+		if (queueFamilies[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) printf("sparse_binding ");
 		printf("\n");
 	}
+
+	return graphicsFamilyIndex;
+}
+
+void createLogicalDevice(VkPhysicalDevice physicalDevice, VkDevice *logicalDeviceOut) {
+	*logicalDeviceOut = VK_NULL_HANDLE;
+	
+	// Create one graphics queue
+	VkDeviceQueueCreateInfo queueCreateInfo = {};
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.queueFamilyIndex = getGraphicsQueueFamilyIndex(physicalDevice);
+	queueCreateInfo.queueCount = 1;
+
+	float queuePriority = 1.0f;
+	queueCreateInfo.pQueuePriorities = &queuePriority;
+
+	VkPhysicalDeviceFeatures enabledFeatures = {};
+
+	VkDeviceCreateInfo deviceCreateInfo = {};
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+	deviceCreateInfo.queueCreateInfoCount = 1;
+
+	deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
+
+	uint32_t layerCount;
+	VkResult result = vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, nullptr);
+	SDL_assert(result == VK_SUCCESS);
+	vector<VkLayerProperties> deviceLayers(layerCount);
+	result = vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, deviceLayers.data());
+	SDL_assert(result == VK_SUCCESS);
+
+	printf("\nAvailable device layers (deprecated API section):\n");
+	for (const auto& layer : deviceLayers) {
+		printf("\t%s\n", layer.layerName);
+	}
+
+	deviceCreateInfo.enabledLayerCount = (int)requiredValidationLayers.size();
+	deviceCreateInfo.ppEnabledLayerNames = requiredValidationLayers.data();
 }
 
 int main(int argc, char* argv[]) {
@@ -153,9 +200,9 @@ int main(int argc, char* argv[]) {
 	int result = SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_assert(result == 0);
 
-	// create a 800x600 SDL2 window
-	int windowWidth = 800;
-	int windowHeight = 600;
+	// create a 4:3 SDL window
+	int windowWidth = 1200;
+	int windowHeight = 900;
 
 	SDL_Window *window = SDL_CreateWindow(
 		appName, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_VULKAN);
@@ -167,8 +214,9 @@ int main(int argc, char* argv[]) {
 	VkPhysicalDevice physicalDevice;
 	getVkPhysicalDevice(vkInstance, &physicalDevice);
 
-	queryQueueFamilies(physicalDevice);
-	
+	VkDevice device;
+	createLogicalDevice(physicalDevice, &device);
+
 	bool running = true;
 	while (running) {
 		static double previousTime = 0;
