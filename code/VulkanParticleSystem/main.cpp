@@ -54,13 +54,12 @@ bool checkValidationLayerSupport() {
 	return true;
 }
 
-void createVkInstance(const char* appName, SDL_Window *window, VkInstance *instanceOut) {
+void createVkInstance(SDL_Window *window, VkInstance *instanceOut) {
 	SDL_assert(checkValidationLayerSupport());
 
 	// App info. TODO: Much of this appInfo may be inessential
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = appName;
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.apiVersion = VK_API_VERSION_1_1;
 
@@ -141,7 +140,7 @@ void printQueueFamilies(VkPhysicalDevice device) {
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &familyCount, families.data());
 
 	printf("\nDevice has these queue families:\n");
-	for (int i = 0; i < familyCount; i++) {
+	for (uint32_t i = 0; i < familyCount; i++) {
 		printf("\tNumber of queues: %i. Support: ", families[i].queueCount);
 
 		if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) printf("graphics ");
@@ -238,6 +237,23 @@ void createLogicalDevice(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, 
 	SDL_assert(*surfaceQueueOut!= VK_NULL_HANDLE);
 }
 
+void initVulkan(SDL_Window *window, VkInstance *instanceOut, VkSurfaceKHR *surfaceOut, VkDevice *deviceOut) {
+	createVkInstance(window, instanceOut);
+
+	bool surfaceCreationResult = SDL_Vulkan_CreateSurface(window, *instanceOut, surfaceOut);
+	SDL_assert(surfaceCreationResult);
+	printf("\nCreated surface\n");
+
+	VkPhysicalDevice physicalDevice;
+	getVkPhysicalDevice(*instanceOut, &physicalDevice);
+
+	VkQueue graphicsQueue;
+	VkQueue surfaceQueue;
+	createLogicalDevice(physicalDevice, *surfaceOut, deviceOut, &graphicsQueue, &surfaceQueue);
+
+	printf("\nInitialised Vulkan\n");
+}
+
 int main(int argc, char* argv[]) {
 	const char *appName = "Vulkan Particle System";
 
@@ -255,20 +271,9 @@ int main(int argc, char* argv[]) {
 	SDL_assert(window != NULL);
 
 	VkInstance vkInstance;
-	createVkInstance(appName, window, &vkInstance);
-
 	VkSurfaceKHR surface;
-	bool surfaceCreationResult = SDL_Vulkan_CreateSurface(window, vkInstance, &surface);
-	SDL_assert(surfaceCreationResult);
-	printf("\nCreated surface\n");
-
-	VkPhysicalDevice physicalDevice;
-	getVkPhysicalDevice(vkInstance, &physicalDevice);
-
 	VkDevice device;
-	VkQueue graphicsQueue;
-	VkQueue surfaceQueue;
-	createLogicalDevice(physicalDevice, surface, &device, &graphicsQueue, &surfaceQueue);
+	initVulkan(window, &vkInstance, &surface, &device);
 
 	int setupTimeMs = (int)((getTime() - appStartTime) * 1000);
 	printf("\nSetup took %ims\n", setupTimeMs);
