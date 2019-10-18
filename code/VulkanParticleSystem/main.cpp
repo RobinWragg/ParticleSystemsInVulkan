@@ -156,7 +156,7 @@ int getGraphicsQueueFamilyIndex(VkPhysicalDevice device) {
 	return graphicsFamilyIndex;
 }
 
-void createLogicalDevice(VkPhysicalDevice physicalDevice, VkDevice *logicalDeviceOut) {
+void createLogicalDevice(VkPhysicalDevice physicalDevice, VkDevice *logicalDeviceOut, VkQueue *graphicsQueueOut) {
 	*logicalDeviceOut = VK_NULL_HANDLE;
 	
 	// Create one graphics queue
@@ -192,6 +192,16 @@ void createLogicalDevice(VkPhysicalDevice physicalDevice, VkDevice *logicalDevic
 
 	deviceCreateInfo.enabledLayerCount = (int)requiredValidationLayers.size();
 	deviceCreateInfo.ppEnabledLayerNames = requiredValidationLayers.data();
+
+	result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, logicalDeviceOut);
+	SDL_assert(result == VK_SUCCESS);
+
+	printf("\nCreated logical device\n");
+
+	// Get a handle to the queue we just created
+	int queueIndex = 0; // Only one queue was created, so this is 0.
+	vkGetDeviceQueue(*logicalDeviceOut, queueCreateInfo.queueFamilyIndex, queueIndex, graphicsQueueOut);
+	SDL_assert(*graphicsQueueOut != VK_NULL_HANDLE);
 }
 
 int main(int argc, char* argv[]) {
@@ -215,7 +225,8 @@ int main(int argc, char* argv[]) {
 	getVkPhysicalDevice(vkInstance, &physicalDevice);
 
 	VkDevice device;
-	createLogicalDevice(physicalDevice, &device);
+	VkQueue graphicsQueue;
+	createLogicalDevice(physicalDevice, &device, &graphicsQueue);
 
 	bool running = true;
 	while (running) {
@@ -234,7 +245,9 @@ int main(int argc, char* argv[]) {
 		// TODO: render
 	}
 
-	//vkDestroyInstance(vkInstance, nullptr);
+	vkDestroyDevice(device, nullptr);
+	vkDestroyInstance(vkInstance, nullptr);
+
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 
