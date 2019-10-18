@@ -68,39 +68,33 @@ void createVkInstance(SDL_Window *window, VkInstance *instanceOut) {
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
 
-	unsigned int extensionCount;
-	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-	vector<const char*> extensionNames(extensionCount);
-	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensionNames.data());
+	// Request the instance extensions that SDL requires
+	unsigned int requiredExtensionCount;
+	SDL_Vulkan_GetInstanceExtensions(window, &requiredExtensionCount, nullptr);
+	vector<const char*> requiredExtensions(requiredExtensionCount);
+	SDL_Vulkan_GetInstanceExtensions(window, &requiredExtensionCount, requiredExtensions.data());
 
-	printf("\nExtension list from SDL_Vulkan_GetInstanceExtensions():\n");
-	for (const auto& name : extensionNames) {
-		printf("\t%s\n", name);
-	}
-
-	createInfo.enabledExtensionCount = extensionCount;
-	createInfo.ppEnabledExtensionNames = extensionNames.data();
+	createInfo.enabledExtensionCount = requiredExtensionCount;
+	createInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
 	createInfo.enabledLayerCount = (int)requiredValidationLayers.size();
 	createInfo.ppEnabledLayerNames = requiredValidationLayers.data();
 
 	VkResult instanceCreationResult = vkCreateInstance(&createInfo, nullptr, instanceOut);
 	SDL_assert(instanceCreationResult == VK_SUCCESS);
-
-	// Query available Vulkan extensions
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-	vector<VkExtensionProperties> extensions(extensionCount);
-
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-
-	printf("\nAvailable extensions:\n");
-	for (const auto& extension : extensions) {
-		printf("\t%s\n", extension.extensionName);
-	}
 }
 
-void getVkPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
+vector<VkExtensionProperties> getPhysicalDeviceExtensions(VkPhysicalDevice device) {
+	uint32_t extensionCount;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+	return availableExtensions;
+}
+
+void getPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 	*deviceOut = VK_NULL_HANDLE;
 
 	uint32_t deviceCount = 0;
@@ -110,17 +104,27 @@ void getVkPhysicalDevice(VkInstance instance, VkPhysicalDevice *deviceOut) {
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-	printf("\nAvailable devices (Vulkan v1.1):\n");
-
 	// This picks any device that supports Vulkan 1.1 (this resolves to the GTX 1060 3GB on my testing hardware).
 	for (auto &device : devices) {
 		VkPhysicalDeviceProperties properties;
 		vkGetPhysicalDeviceProperties(device, &properties);
 
-		if (VK_VERSION_MAJOR(properties.apiVersion) >= 1
-			&& VK_VERSION_MINOR(properties.apiVersion) >= 1) {
-			printf("\t%s\n", properties.deviceName);
-			*deviceOut = device;
+		if (VK_VERSION_MAJOR(properties.apiVersion) >= 1 && VK_VERSION_MINOR(properties.apiVersion) >= 1) {
+			
+			auto extensions = getPhysicalDeviceExtensions(device);
+			
+			bool foundSwapchain = false;
+			for (auto &ext : extensions) {
+				if (strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, ext.extensionName) == 0) {
+					foundSwapchain = true;
+					break;
+				}
+			}
+
+			if (foundSwapchain) {
+				*deviceOut = device;
+				break;
+			}
 		}
 	}
 	
@@ -248,7 +252,7 @@ void initVulkan(SDL_Window *window, VkInstance *instanceOut, VkSurfaceKHR *surfa
 	printf("\nCreated surface\n");
 
 	VkPhysicalDevice physicalDevice;
-	getVkPhysicalDevice(*instanceOut, &physicalDevice);
+	getPhysicalDevice(*instanceOut, &physicalDevice);
 
 	VkQueue graphicsQueue;
 	VkQueue surfaceQueue;
@@ -280,7 +284,7 @@ int main(int argc, char* argv[]) {
 
 	int setupTimeMs = (int)((getTime() - appStartTime) * 1000);
 	printf("\nSetup took %ims\n", setupTimeMs);
-
+	
 	bool running = true;
 	while (running) {
 		static double previousTime = 0;
