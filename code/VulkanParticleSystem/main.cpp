@@ -119,7 +119,7 @@ bool deviceSupportsAcceptableSwapchain(VkPhysicalDevice device, VkSurfaceKHR sur
 	vector<VkSurfaceFormatKHR> formats(formatCount);
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
 
-	printf("\nImage count capability of %i to %i\n", capabilities.minImageCount, capabilities.maxImageCount);
+	printf("\nAvailable swap buffer sizes: %i to %i\n", capabilities.minImageCount, capabilities.maxImageCount);
 
 
 
@@ -131,6 +131,7 @@ bool deviceSupportsAcceptableSwapchain(VkPhysicalDevice device, VkSurfaceKHR sur
 	vector<VkPresentModeKHR> presentModes(presentModeCount);
 	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
 
+	printf("Pretending swapchain is not acceptable for now until checking is implemented.\n");
 	return false;
 }
 
@@ -148,7 +149,7 @@ void getPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevi
 	for (auto &device : devices) {
 		VkPhysicalDeviceProperties properties;
 		vkGetPhysicalDeviceProperties(device, &properties);
-
+		
 		if (VK_VERSION_MAJOR(properties.apiVersion) >= 1
 			&& VK_VERSION_MINOR(properties.apiVersion) >= 1
 			&& deviceHasExtensions(device, requiredDeviceExtensions)
@@ -160,7 +161,7 @@ void getPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevi
 	}
 	
 	SDL_assert(*deviceOut != VK_NULL_HANDLE);
-
+	
 	VkPhysicalDeviceProperties properties;
 	vkGetPhysicalDeviceProperties(*deviceOut, &properties);
 	printf("\nChosen device: %s\n", properties.deviceName);
