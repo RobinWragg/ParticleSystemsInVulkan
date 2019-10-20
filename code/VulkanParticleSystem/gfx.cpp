@@ -9,6 +9,10 @@ using namespace std;
 #include <vulkan/vulkan.h>
 
 namespace gfx {
+	const auto requiredSwapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	const int requiredSwapchainImageCount = 2;
+
 	VkDevice device = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
@@ -36,30 +40,23 @@ namespace gfx {
 	}
 
 	bool deviceSupportsAcceptableSwapchain(VkPhysicalDevice device, VkSurfaceKHR surface) {
-		return true; // TODO
-		VkSurfaceCapabilitiesKHR capabilities;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
-
+		
+		// Check for required format
 		uint32_t formatCount;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
 		vector<VkSurfaceFormatKHR> formats(formatCount);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
 
-		printf("\nAvailable swap buffer sizes: %i to %i\n", capabilities.minImageCount, capabilities.maxImageCount);
+		bool foundRequiredFormat = false;
 
-		VK_FORMAT_B8G8R8A8_UNORM;
-		VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+		for (auto &format : formats) {
+			if (format.format == requiredSwapchainFormat
+				&& format.colorSpace == requiredSwapchainColorSpace) {
+				foundRequiredFormat = true;
+			}
+		}
 
-
-
-
-		uint32_t presentModeCount;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-		vector<VkPresentModeKHR> presentModes(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
-
-		printf("\nPretending swapchain is not acceptable for now until checking is implemented.\n");
-		return false;
+		return foundRequiredFormat;
 	}
 
 	void printQueueFamilies(VkPhysicalDevice device) {
@@ -253,6 +250,36 @@ namespace gfx {
 			vkGetDeviceQueue(device, queueInfos[0].queueFamilyIndex, queueIndex, &queue);
 			SDL_assert(queue != VK_NULL_HANDLE);
 			printf("\nCreated queue at family index %i\n", queueInfos[0].queueFamilyIndex);
+		}
+		
+		// Create the swapchain
+		VkSwapchainKHR swapchain;
+		{
+			VkSurfaceCapabilitiesKHR capabilities;
+			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
+
+			uint32_t presentModeCount;
+			vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+			vector<VkPresentModeKHR> presentModes(presentModeCount);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data());
+
+			VkSwapchainCreateInfoKHR createInfo = {};
+			createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+			createInfo.surface = surface;
+			createInfo.minImageCount = requiredSwapchainImageCount;
+			createInfo.imageFormat = requiredSwapchainFormat;
+			createInfo.imageColorSpace = requiredSwapchainColorSpace;
+			createInfo.imageExtent = capabilities.currentExtent;
+			createInfo.imageArrayLayers = 1; // 1 == not stereoscopic
+			createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // Suitable for VkFrameBuffer
+			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // the graphics and surface queues are the same, so no sharing is necessary.
+			createInfo.preTransform = capabilities.currentTransform;
+			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Opaque window
+			createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+			createInfo.clipped = VK_FALSE; // Vulkan will always render all the pixels, even if some are osbscured by other windows.
+			createInfo.oldSwapchain = VK_NULL_HANDLE; // I will not support swapchain recreation.
+
+			SDL_assert(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain) == VK_SUCCESS);
 		}
 
 		printf("\nInitialised Vulkan\n");
