@@ -13,6 +13,7 @@ namespace gfx {
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
 
+	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	VkDevice device = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
@@ -253,7 +254,6 @@ namespace gfx {
 		}
 		
 		// Create the swapchain
-		VkSwapchainKHR swapchain;
 		{
 			VkSurfaceCapabilitiesKHR capabilities;
 			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
@@ -286,6 +286,7 @@ namespace gfx {
 	}
 
 	void destroy() {
+		vkDestroySwapchainKHR(device, swapchain, nullptr);
 		vkDestroyDevice(device, nullptr);
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyInstance(instance, nullptr);
