@@ -1,0 +1,68 @@
+
+% Research and Analyse!
+% Show Specialist Knowledge!
+% Communicate Effectively!
+% Experiment Effectively!
+
+\documentclass[11pt, a4paper, twocolumn]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{titlesec}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage[font={small, it}, labelfont=bf, center]{caption}
+\usepackage[top=1cm, left=1cm, right=1cm, bottom=2cm]{geometry}
+
+\usepackage{helvet} % Helvetica 'phv'
+\usepackage{mathptmx} % Times 'ptm'
+
+\urlstyle{same}
+
+\titleformat{\section}
+  {\sffamily\bfseries\Large} % format
+  {\thesection} % label
+  {1em} % label separation
+  {} % before-code
+
+\titleformat{\subsection}
+  {\sffamily\bfseries} % format
+  {\thesubsection} % label
+  {1em} % label separation
+  {} % before-code
+
+\title{\sffamily\bfseries Development Journal: Vulkan \& Particle Systems}
+\author{Robin Wragg}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Moving Away from IMUs(?)}
+
+\section{Preliminary Library Choices}
+
+Why sdl? why glm?
+
+\section{Initialising Vulkan}
+
+Decided to create a flat function with well-subscoped sections. (carmack)
+
+created a batch file that stays open only if errors occur
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{agsm}
+\bibliography{mendeley_refs, other_refs}
+
+% TODO: appendix entry with full details of the computer - include the protocol and theoretical speed of the GPU's bus etc.
+% TODO: appendix entry with notes on Vulkan on macOS with MoltenVK
+
+\end{document}
+
+
+
+
+
