@@ -28,7 +28,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="vertex.glsl">
+    <None Include="basic.frag">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="basic.vert">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
