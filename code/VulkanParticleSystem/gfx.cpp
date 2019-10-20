@@ -14,6 +14,8 @@ namespace gfx {
 	const int requiredSwapchainImageCount = 2;
 
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+	vector<VkImage> swapchainImages;
+	vector<VkImageView> swapchainViews;
 	VkDevice device = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
@@ -280,12 +282,49 @@ namespace gfx {
 			createInfo.oldSwapchain = VK_NULL_HANDLE; // I will not support swapchain recreation.
 
 			SDL_assert(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain) == VK_SUCCESS);
+			printf("\nCreated swapchain with %i images\n", requiredSwapchainImageCount);
+		}
+
+		// Get handles to the swapchain images and create their views
+		{
+			uint32_t actualImageCount;
+			vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, nullptr);
+			SDL_assert(actualImageCount >= requiredSwapchainImageCount);
+			swapchainImages.resize(actualImageCount);
+			swapchainViews.resize(actualImageCount);
+			SDL_assert(vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, swapchainImages.data()) == VK_SUCCESS);
+
+
+			for (int i = 0; i < swapchainImages.size(); i++) {
+				VkImageViewCreateInfo createInfo = {};
+				createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+				createInfo.image = swapchainImages[i];
+				createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+				createInfo.format = requiredSwapchainFormat;
+				
+				createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+				createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+				createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+				createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+				createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				createInfo.subresourceRange.baseMipLevel = 0;
+				createInfo.subresourceRange.levelCount = 1;
+				createInfo.subresourceRange.baseArrayLayer = 0;
+				createInfo.subresourceRange.layerCount = 1;
+				
+				SDL_assert(vkCreateImageView(device, &createInfo, nullptr, &swapchainViews[i]) == VK_SUCCESS);
+			}
 		}
 
 		printf("\nInitialised Vulkan\n");
 	}
 
 	void destroy() {
+		for (auto view : swapchainViews) vkDestroyImageView(device, view, nullptr);
+		swapchainViews.resize(0);
+
+		swapchainImages.resize(0);
 		vkDestroySwapchainKHR(device, swapchain, nullptr);
 		vkDestroyDevice(device, nullptr);
 		vkDestroySurfaceKHR(instance, surface, nullptr);
