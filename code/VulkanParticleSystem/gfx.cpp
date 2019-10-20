@@ -217,13 +217,12 @@ namespace gfx {
 			printf("\nChosen device: %s\n", properties.deviceName);
 		}
 
-		// Create logical device with graphics and surface queues
-		VkQueue graphicsQueue = VK_NULL_HANDLE;
-		VkQueue surfaceQueue = VK_NULL_HANDLE;
+		// Create logical device with a queue capable of graphics and surface presentation commands
+		VkQueue queue = VK_NULL_HANDLE;
 		{
-			auto graphicsQueueInfo = buildQueueCreateInfo(physicalDevice, VK_QUEUE_GRAPHICS_BIT, false);
-			auto surfaceQueueInfo = buildQueueCreateInfo(physicalDevice, (VkQueueFlagBits)0, true);
-			vector<VkDeviceQueueCreateInfo> queueInfos = { graphicsQueueInfo, surfaceQueueInfo };
+			vector<VkDeviceQueueCreateInfo> queueInfos = {
+				buildQueueCreateInfo(physicalDevice, VK_QUEUE_GRAPHICS_BIT, true)
+			};
 			VkDeviceCreateInfo deviceCreateInfo = {};
 			{
 				deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -249,15 +248,11 @@ namespace gfx {
 			SDL_assert(device != VK_NULL_HANDLE);
 			printf("\nCreated logical device\n");
 
-			// Get handles to the new queues
+			// Get handle to the new queue
 			int queueIndex = 0; // Only one queue per VkDeviceQueueCreateInfo was created, so this is 0.
-			vkGetDeviceQueue(device, graphicsQueueInfo.queueFamilyIndex, queueIndex, &graphicsQueue);
-			SDL_assert(graphicsQueue != VK_NULL_HANDLE);
-			printf("\nCreated graphics queue at family index %i\n", graphicsQueueInfo.queueFamilyIndex);
-
-			vkGetDeviceQueue(device, surfaceQueueInfo.queueFamilyIndex, queueIndex, &surfaceQueue);
-			SDL_assert(surfaceQueue != VK_NULL_HANDLE);
-			printf("\nCreated surface queue at family index %i\n", surfaceQueueInfo.queueFamilyIndex);
+			vkGetDeviceQueue(device, queueInfos[0].queueFamilyIndex, queueIndex, &queue);
+			SDL_assert(queue != VK_NULL_HANDLE);
+			printf("\nCreated queue at family index %i\n", queueInfos[0].queueFamilyIndex);
 		}
 
 		printf("\nInitialised Vulkan\n");
