@@ -138,6 +138,10 @@ namespace gfx {
 		for (const auto& layer : deviceLayers) printf("\t%s\n", layer.layerName);
 	}
 
+	void buildPipeline() {
+		
+	}
+
 	void init(SDL_Window *window) {
 		printAvailableInstanceLayers();
 
@@ -294,7 +298,6 @@ namespace gfx {
 			swapchainViews.resize(actualImageCount);
 			SDL_assert(vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, swapchainImages.data()) == VK_SUCCESS);
 
-
 			for (int i = 0; i < swapchainImages.size(); i++) {
 				VkImageViewCreateInfo createInfo = {};
 				createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -318,6 +321,8 @@ namespace gfx {
 		}
 
 		printf("\nInitialised Vulkan\n");
+
+		buildPipeline();
 	}
 
 	void destroy() {
