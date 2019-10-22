@@ -221,7 +221,7 @@ namespace gfx {
 			printf("\nChosen device: %s\n", properties.deviceName);
 		}
 
-		// Create logical device with a queue capable of graphics and surface presentation commands
+		// Create the logical device with a queue capable of graphics and surface presentation commands
 		VkQueue queue = VK_NULL_HANDLE;
 		{
 			vector<VkDeviceQueueCreateInfo> queueInfos = {
@@ -252,7 +252,7 @@ namespace gfx {
 			SDL_assert(device != VK_NULL_HANDLE);
 			printf("\nCreated logical device\n");
 
-			// Get handle to the new queue
+			// Get a handle to the new queue
 			int queueIndex = 0; // Only one queue per VkDeviceQueueCreateInfo was created, so this is 0.
 			vkGetDeviceQueue(device, queueInfos[0].queueFamilyIndex, queueIndex, &queue);
 			SDL_assert(queue != VK_NULL_HANDLE);

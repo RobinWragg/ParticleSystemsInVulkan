@@ -49,21 +49,22 @@ Why sdl? why glm?
 
 \section{Initialising Vulkan}
 
-Decided to create a flat function with well-subscoped sections. (carmack)
-
-created a batch file that stays open only if errors occur
-
 I started following some tutorials for initialising Vulkan, but I found they advised implementing things that I didn't need, so I found it best to read tutorials only as a convenient place to find out what order different parts of the API should to be called, and then I would decide which parts I needed and what code structure was best, while reading the API reference for each function to make sure I didn't miss any important details.
 
 I usually like to categorise my program into separate functions or classes as I go, as I think we all do, as it's generally good to write code that separates concerns. But Vulkan's setup code isn't particularly easy to divide into independent sections, \emph{e.g.} we might want to isolate \verb|VkQueue| creation from the rest of the setup, but we can't do that neatly because it depends on the capabilities of the \verb|VkPhysicalDevice|; the \verb|VkQueue| then needs to be created at the same time as the \verb|VkDevice| (the \emph{logical} device).
 
-So I followed the advice of Carmack (TODO: cite) and kept the majority of the API calls in one function (\verb|gfx::init()|), using well-subscoped sections to guarantee the lifetimes of variables, and I only implemented additional functions if those functions were "getters" that didn't have many dependencies/parameters and didn't modify the state outside of their own scope. This enabled me to view the entire collection of setup API calls with very little clutter.
+So I followed John Carmack's suggestions (\citeyear{Carmack2007}): I kept the majority of the API calls in one function (\verb|gfx::init()|), using well-subscoped sections to keep the local namespace simple, and I only implemented additional functions if those functions were "getters" that didn't have many dependencies/parameters and didn't modify the state outside of their own scope. This enabled me to view the entire collection of setup API calls in a tighter space, with much less clutter and no un-obvious behaviour hidden behind unnecessary function calls; I had a better view of the dependencies between components and the order of execution.
 
-% TODO: cite: http://number-none.com/blow/john_carmack_on_inlined_code.html
+At some point I may refactor the getters to be lambdas local to \verb|gfx::init()|, as they won't need to be called outside that function. Although I may \emph{not}, because it would significantly increase the line count of \verb|gfx::init()|. Since I'm not sure, it's best to leave it for now because I find it's beneficial to postpone making decisions if they are not urgent. Not out of laziness, but because in the future, you're likely to have gathered more information to inform your decision. Not to mention that the right decision today might be the wrong decision tomorrow. This idea often crops up in talks about entrepreneurship \citep{Knott-Craig2017}, but I think it's appropriate for software development.
+
+\section{Next}
+
+
+% created a batch file that stays open only if errors occur
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliographystyle{agsm}
-\bibliography{mendeley_refs, other_refs}
+\bibliography{other_refs}
 
 % TODO: appendix entry with full details of the computer - include the protocol and theoretical speed of the GPU's bus etc.
 % TODO: appendix entry with notes on Vulkan on macOS with MoltenVK
