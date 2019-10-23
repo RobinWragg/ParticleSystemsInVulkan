@@ -65,7 +65,6 @@ int main(int argc, char* argv[]) {
 	}
 
 	graphics::destroy();
-	// SDL_DestroyWindow(window); TODO: necessary?
 	SDL_Quit();
 
 	return 0;
