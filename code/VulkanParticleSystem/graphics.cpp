@@ -1,4 +1,4 @@
-#include "gfx.h"
+#include "graphics.h"
 
 #include <cstdio>
 #include <vector>
@@ -10,7 +10,7 @@ using namespace std;
 #include <SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
-namespace gfx {
+namespace graphics {
 	const auto requiredSwapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
@@ -181,8 +181,7 @@ namespace gfx {
 	}
 
 	void buildPipeline(VkExtent2D extent) {
-		// TODO rename gfx
-
+		
 		vector<VkPipelineShaderStageCreateInfo> shaderStages = {
 			buildShaderStage("basic_vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
 			buildShaderStage("basic_frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT)

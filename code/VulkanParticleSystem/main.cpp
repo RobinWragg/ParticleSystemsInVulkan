@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <SDL.h>
 
-#include "gfx.h"
+#include "graphics.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 		appName, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_VULKAN);
 	SDL_assert(window != NULL);
 
-	gfx::init(window);
+	graphics::init(window);
 
 	int setupTimeMs = (int)((getTime() - appStartTime) * 1000);
 	printf("\nSetup took %ims\n", setupTimeMs);
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
 		// TODO: render
 	}
 
-	gfx::destroy();
+	graphics::destroy();
 	// SDL_DestroyWindow(window); TODO: necessary?
 	SDL_Quit();
 

@@ -2,7 +2,7 @@
 
 #include <SDL.h>
 
-namespace gfx {
+namespace graphics {
 	void init(SDL_Window *window);
 	void destroy();
 }

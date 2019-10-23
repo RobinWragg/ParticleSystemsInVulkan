@@ -130,11 +130,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="gfx.cpp" />
+    <ClCompile Include="graphics.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="gfx.h" />
+    <ClInclude Include="graphics.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="basic.frag" />
