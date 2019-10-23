@@ -19,6 +19,7 @@ namespace graphics {
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkPipeline pipeline;
 	VkRenderPass renderPass;
+	vector<VkFramebuffer> framebuffers;
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	vector<VkImage> swapchainImages;
 	vector<VkImageView> swapchainViews;
@@ -306,6 +307,27 @@ namespace graphics {
 		for (auto &stage : shaderStages) vkDestroyShaderModule(device, stage.module, nullptr);
 	}
 
+	void buildFramebuffers(VkExtent2D extent) {
+		framebuffers.resize(swapchainViews.size());
+
+		for (int i = 0; i < swapchainViews.size(); i++) {
+			VkImageView attachments[] = {
+				swapchainViews[i]
+			};
+
+			VkFramebufferCreateInfo framebufferInfo = {};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = renderPass;
+			framebufferInfo.attachmentCount = 1;
+			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.width = extent.width;
+			framebufferInfo.height = extent.height;
+			framebufferInfo.layers = 1;
+
+			SDL_assert(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffers[i]) == VK_SUCCESS);
+		}
+	}
+
 	void init(SDL_Window *window) {
 		printAvailableInstanceLayers();
 
@@ -491,9 +513,12 @@ namespace graphics {
 
 		buildRenderPass();
 		buildPipeline(imageExtent);
+		buildFramebuffers(imageExtent);
 	}
 
 	void destroy() {
+		for (auto &buffer : framebuffers) vkDestroyFramebuffer(device, buffer, nullptr);
+
 		vkDestroyPipeline(device, pipeline, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyRenderPass(device, renderPass, nullptr);
