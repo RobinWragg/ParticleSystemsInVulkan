@@ -153,9 +153,23 @@ namespace gfx {
 		for (const auto& layer : deviceLayers) printf("\t%s\n", layer.layerName);
 	}
 
+	VkShaderModule buildShader(const char *spirVFile) {
+		auto spirV = loadBinaryFile(spirVFile);
+
+		VkShaderModuleCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		info.codeSize = spirV.size();
+		info.pCode = (uint32_t*)spirV.data();
+
+		VkShaderModule shader;
+		SDL_assert(vkCreateShaderModule(device, &info, nullptr, &shader) == VK_SUCCESS);
+
+		return shader;
+	}
+
 	void buildPipeline() {
-		auto vertShader = loadBinaryFile("basic_vert.spv");
-		auto fragShader = loadBinaryFile("basic_frag.spv");
+		auto vertShader = buildShader("basic_vert.spv");
+		auto fragShader = buildShader("basic_frag.spv");
 	}
 
 	void init(SDL_Window *window) {
