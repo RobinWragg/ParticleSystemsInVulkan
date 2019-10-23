@@ -15,6 +15,7 @@ namespace gfx {
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
 
+	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	vector<VkImage> swapchainImages;
 	vector<VkImageView> swapchainViews;
@@ -153,23 +154,109 @@ namespace gfx {
 		for (const auto& layer : deviceLayers) printf("\t%s\n", layer.layerName);
 	}
 
-	VkShaderModule buildShader(const char *spirVFile) {
-		auto spirV = loadBinaryFile(spirVFile);
+	VkPipelineShaderStageCreateInfo buildShaderStage(const char *spirVFilePath, VkShaderStageFlagBits stage) {
+		auto spirV = loadBinaryFile(spirVFilePath);
 
-		VkShaderModuleCreateInfo info = {};
-		info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		info.codeSize = spirV.size();
-		info.pCode = (uint32_t*)spirV.data();
+		VkShaderModuleCreateInfo moduleInfo = {};
+		moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		moduleInfo.codeSize = spirV.size();
+		moduleInfo.pCode = (uint32_t*)spirV.data();
 
-		VkShaderModule shader;
-		SDL_assert(vkCreateShaderModule(device, &info, nullptr, &shader) == VK_SUCCESS);
+		VkShaderModule module;
+		SDL_assert(vkCreateShaderModule(device, &moduleInfo, nullptr, &module) == VK_SUCCESS);
 
-		return shader;
+		VkPipelineShaderStageCreateInfo stageInfo = {};
+		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+
+		stageInfo.stage = stage;
+
+		stageInfo.module = module;
+		stageInfo.pName = "main";
+
+		return stageInfo;
 	}
 
-	void buildPipeline() {
-		auto vertShader = buildShader("basic_vert.spv");
-		auto fragShader = buildShader("basic_frag.spv");
+	void buildRenderPass() {
+
+	}
+
+	void buildPipeline(VkExtent2D extent) {
+		// TODO rename gfx
+
+		vector<VkPipelineShaderStageCreateInfo> shaderStages = {
+			buildShaderStage("basic_vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
+			buildShaderStage("basic_frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT)
+		};
+
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 0;
+		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+		VkViewport viewport = {};
+		viewport.x = 0;
+		viewport.y = 0;
+		viewport.width = (float)extent.width;
+		viewport.height = (float)extent.height;
+		viewport.minDepth = 0;
+		viewport.maxDepth = 1;
+
+		VkRect2D scissor = {};
+		scissor.offset.x = 0;
+		scissor.offset.y = 0;
+		scissor.extent = extent;
+
+		VkPipelineViewportStateCreateInfo viewportInfo = {};
+		viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportInfo.viewportCount = 1;
+		viewportInfo.pViewports = &viewport;
+		viewportInfo.scissorCount = 1;
+		viewportInfo.pScissors = &scissor;
+
+		VkPipelineRasterizationStateCreateInfo rasterInfo = {};
+		rasterInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterInfo.depthClampEnable = VK_FALSE;
+		rasterInfo.rasterizerDiscardEnable = VK_FALSE;
+		rasterInfo.polygonMode = VK_POLYGON_MODE_FILL;
+		rasterInfo.lineWidth = 1; // TODO: unnecessary?
+		rasterInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterInfo.depthBiasEnable = VK_FALSE;
+
+		// TODO: implement basic antialiasing
+		VkPipelineMultisampleStateCreateInfo multisamplingInfo = {};
+		multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisamplingInfo.sampleShadingEnable = VK_FALSE;
+		multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_TRUE;
+		
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+		VkPipelineColorBlendStateCreateInfo colorBlending = {};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachment;
+
+		VkPipelineLayoutCreateInfo layoutInfo = {};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		SDL_assert(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS);
+
+		for (auto &stage : shaderStages) vkDestroyShaderModule(device, stage.module, nullptr);
 	}
 
 	void init(SDL_Window *window) {
@@ -290,9 +377,11 @@ namespace gfx {
 		}
 		
 		// Create the swapchain
+		VkExtent2D imageExtent;
 		{
 			VkSurfaceCapabilitiesKHR capabilities;
 			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
+			imageExtent = capabilities.currentExtent;
 
 			uint32_t presentModeCount;
 			vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
@@ -305,7 +394,7 @@ namespace gfx {
 			createInfo.minImageCount = requiredSwapchainImageCount;
 			createInfo.imageFormat = requiredSwapchainFormat;
 			createInfo.imageColorSpace = requiredSwapchainColorSpace;
-			createInfo.imageExtent = capabilities.currentExtent;
+			createInfo.imageExtent = imageExtent;
 			createInfo.imageArrayLayers = 1; // 1 == not stereoscopic
 			createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // Suitable for VkFrameBuffer
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // the graphics and surface queues are the same, so no sharing is necessary.
@@ -352,10 +441,12 @@ namespace gfx {
 
 		printf("\nInitialised Vulkan\n");
 
-		buildPipeline();
+		buildPipeline(imageExtent);
 	}
 
 	void destroy() {
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
 		for (auto view : swapchainViews) vkDestroyImageView(device, view, nullptr);
 		swapchainViews.resize(0);
 
