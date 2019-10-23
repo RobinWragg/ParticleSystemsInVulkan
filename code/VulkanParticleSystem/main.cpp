@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <windows.h>
 #include <SDL.h>
 
 #include "gfx.h"
@@ -23,6 +24,10 @@ int main(int argc, char* argv[]) {
 
 	int result = SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_assert(result == 0);
+
+	char *path = SDL_GetBasePath();
+	SDL_assert(SetCurrentDirectory(path));
+	SDL_free(path);
 
 	double appStartTime = getTime();
 

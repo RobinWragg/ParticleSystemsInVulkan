@@ -2,6 +2,8 @@
 
 #include <cstdio>
 #include <vector>
+#include <fstream>
+#include <direct.h>
 
 using namespace std;
 
@@ -19,6 +21,19 @@ namespace gfx {
 	VkDevice device = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
+	
+	vector<uint8_t> loadBinaryFile(const char *filename) {
+		ifstream file(filename, ios::ate | ios::binary);
+
+		SDL_assert(file.is_open());
+
+		vector<uint8_t> bytes(file.tellg());
+		file.seekg(0);
+		file.read((char*)bytes.data(), bytes.size());
+		file.close();
+
+		return bytes;
+	}
 
 	bool deviceHasExtensions(VkPhysicalDevice device, vector<const char*> requiredExtensions) {
 		uint32_t availableExtensionCount;
@@ -139,7 +154,8 @@ namespace gfx {
 	}
 
 	void buildPipeline() {
-		
+		auto vertShader = loadBinaryFile("basic_vert.spv");
+		auto fragShader = loadBinaryFile("basic_frag.spv");
 	}
 
 	void init(SDL_Window *window) {
