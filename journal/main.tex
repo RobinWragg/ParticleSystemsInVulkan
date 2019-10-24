@@ -49,7 +49,7 @@ Why sdl? why glm?
 
 \section{Initialising Vulkan}
 
-I started following some tutorials for initialising Vulkan, but I found they advised implementing things that I didn't need, so I found it best to read tutorials only as a convenient place to find out what order different parts of the API should to be called, and then I would decide which parts I needed and what code structure was best, while reading the API reference for each function to make sure I didn't miss any important details.
+I started following some tutorials for initialising Vulkan, such as the one by \citet{Overvoorde2019}, but I found they advised implementing things that I didn't need. So I found it best to read tutorials only as a convenient place to find out what order different parts of the API should to be called, and then I would decide which parts I needed and what code structure was best, while reading the API reference \citep{VulkanSpec} for each function to make sure I didn't miss any important details.
 
 I usually like to categorise my program into separate functions or classes as I go, as I think we all do, as it's generally good to write code that separates concerns. But Vulkan's setup code isn't particularly easy to divide into independent sections, \emph{e.g.} we might want to isolate \verb|VkQueue| creation from the rest of the setup, but we can't do that neatly because it depends on the capabilities of the \verb|VkPhysicalDevice|; the \verb|VkQueue| then needs to be created at the same time as the \verb|VkDevice| (the \emph{logical} device).
 
@@ -57,10 +57,11 @@ So I followed John Carmack's suggestions (\citeyear{Carmack2007}): I kept the ma
 
 At some point I may refactor the getters to be lambdas local to \verb|gfx::init()|, as they won't need to be called outside that function. Although I may \emph{not}, because it would significantly increase the line count of \verb|gfx::init()|. Since I'm not sure, it's best to leave it for now because I find it's beneficial to postpone making decisions if they are not urgent. Not out of laziness, but because in the future, you're likely to have gathered more information to inform your decision. Not to mention that the right decision today might be the wrong decision tomorrow. This idea often crops up in talks about entrepreneurship \citep{Knott-Craig2017}, but I think it's appropriate for software development.
 
-\section{Next}
+\section{Finishing the Initialisation Code}
 
+At this point I've written over 500 lines of Vulkan initialisation code! That includes all the settings for the Vulkan instance (including extensions and validation layers), the presentation surface, the physical and logical device, the first command queue, the swapchain and its images and the views into those images, and since the previous chapter I've prepared some basic shaders, written code to invoke Google's \verb|glslc| program to compile them, initialised the first render pass settings which specifies how and what data is exposed to the shaders, and finally built the first pipeline which loads the shaders, sets the viewport extents, the primitive topology (discrete triangles or triangle lists \emph{etc.}), the colour-blend settings, the vertex input bindings and so on.
 
-% created a batch file that stays open only if errors occur
+This is tons of code just for setup, but I don't think it suggests the API is poor. It's clearly about giving the graphics driver as much useful information as possible so it can remove unnecessary execution steps. I imagine another effect of this explicit API style is to make Vulkan more future-proof and able to support various edge cases not known when the specification was created. It would be interesting to study how the API incorporates real-time ray-tracing, as that's a fairly new rendering style that needs to slot in next to the existing model, but I need to focus on the core of the project, which right now is getting triangles on the screen so I can start writing the particle system.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliographystyle{agsm}
