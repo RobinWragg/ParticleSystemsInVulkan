@@ -60,8 +60,10 @@ int main(int argc, char* argv[]) {
 			case SDL_QUIT: running = false; break;
 			}
 		}
-
+		
 		// TODO: render
+		graphics::render();
+		printf("deltaTime: %.3lfms\n", deltaTime * 1000);
 	}
 
 	graphics::destroy();
