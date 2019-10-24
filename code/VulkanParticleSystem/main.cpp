@@ -1,7 +1,5 @@
-#include <cstdio>
-#include <windows.h>
-#include <SDL.h>
 
+#include "main.h"
 #include "graphics.h"
 
 #define GLM_FORCE_RADIANS
@@ -11,13 +9,13 @@
 
 using namespace std;
 
-SDL_Renderer *renderer;
-int rendererWidth, rendererHeight;
-
 double getTime() {
 	static uint64_t startCount = SDL_GetPerformanceCounter();
 	return (SDL_GetPerformanceCounter() - startCount) / (double)SDL_GetPerformanceFrequency();
 }
+
+SDL_Renderer *renderer;
+int rendererWidth, rendererHeight;
 
 int main(int argc, char* argv[]) {
 	const char *appName = "Vulkan Particle System";

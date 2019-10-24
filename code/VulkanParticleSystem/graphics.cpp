@@ -1,4 +1,5 @@
 #include "graphics.h"
+#include "main.h"
 
 #include <cstdio>
 #include <vector>
@@ -15,6 +16,7 @@ namespace graphics {
 	const auto requiredSwapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
+	bool vsync = true;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
@@ -311,7 +313,7 @@ namespace graphics {
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
-		pipelineInfo.stageCount = shaderStages.size();
+		pipelineInfo.stageCount = (int)shaderStages.size();
 		pipelineInfo.pStages = shaderStages.data();
 
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
@@ -547,7 +549,7 @@ namespace graphics {
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // the graphics and surface queues are the same, so no sharing is necessary.
 			createInfo.preTransform = capabilities.currentTransform;
 			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Opaque window
-			createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+			createInfo.presentMode = vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
 			createInfo.clipped = VK_FALSE; // Vulkan will always render all the pixels, even if some are osbscured by other windows.
 			createInfo.oldSwapchain = VK_NULL_HANDLE; // I will not support swapchain recreation.
 
@@ -596,6 +598,7 @@ namespace graphics {
 	}
 
 	void render() {
+		double submitStartT = getTime();
 
 		// Submit commands
 		uint32_t swapchainImageIndex;
@@ -616,8 +619,12 @@ namespace graphics {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &renderCompletedSemaphore;
 
+		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
 		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
+
 		SDL_assert(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
+
+		double presentStartT = getTime();
 
 		// Present
 		VkPresentInfoKHR presentInfo = {};
@@ -631,6 +638,10 @@ namespace graphics {
 		presentInfo.pImageIndices = &swapchainImageIndex;
 
 		SDL_assert(vkQueuePresentKHR(queue, &presentInfo) == VK_SUCCESS);
+
+		double presentEndT = getTime();
+
+		printf("Submit took %.3lfms. Present tool %.3lfms.\n", (presentStartT - submitStartT) * 1000, (presentEndT - presentStartT) * 1000);
 	}
 
 	void destroy() {
