@@ -59,9 +59,9 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		
-		// TODO: render
 		graphics::render();
-		printf("deltaTime: %.3lfms\n", deltaTime * 1000);
+
+		// printf("deltaTime: %.3lfms\n", deltaTime * 1000);
 	}
 
 	graphics::destroy();

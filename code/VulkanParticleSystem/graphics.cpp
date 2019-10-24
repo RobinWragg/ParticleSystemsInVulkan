@@ -21,6 +21,7 @@ namespace graphics {
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
 
+	VkDebugUtilsMessengerEXT debugMsgr;
 	VkQueue queue = VK_NULL_HANDLE;
 	VkCommandPool commandPool = VK_NULL_HANDLE;
 	vector<VkCommandBuffer> commandBuffers;
@@ -164,6 +165,42 @@ namespace graphics {
 
 		printf("\nAvailable device layers (deprecated API section):\n");
 		for (const auto& layer : deviceLayers) printf("\t%s\n", layer.layerName);
+	}
+
+	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+		VkDebugUtilsMessageTypeFlagsEXT msgType,
+		const VkDebugUtilsMessengerCallbackDataEXT *data,
+		void *pUserData) {
+
+		printf("\n");
+
+		switch (severity) {
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: printf("verbose, "); break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: printf("info, "); break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: printf("WARNING, "); break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: printf("ERROR, "); break;
+		default: printf("unknown, "); break;
+		};
+
+		switch (msgType) {
+		case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT: printf("general: "); break;
+		case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT: printf("validation: "); break;
+		case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT: printf("performance: "); break;
+		default: printf("unknown: "); break;
+		};
+
+		printf("%s (%i objects reported)\n", data->pMessage, data->objectCount);
+
+		switch (severity) {
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+			SDL_assert(false, "fje");
+			break;
+		default: break;
+		};
+
+		return VK_FALSE;
 	}
 
 	VkPipelineShaderStageCreateInfo buildShaderStage(const char *spirVFilePath, VkShaderStageFlagBits stage) {
@@ -438,6 +475,8 @@ namespace graphics {
 				requiredExtensions.resize(requiredExtensionCount);
 				SDL_Vulkan_GetInstanceExtensions(window, &requiredExtensionCount, requiredExtensions.data());
 
+				if (!requiredValidationLayers.empty()) requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
 				createInfo.enabledExtensionCount = (int)requiredExtensions.size();
 				createInfo.ppEnabledExtensionNames = requiredExtensions.data();
 			}
@@ -449,6 +488,27 @@ namespace graphics {
 			auto creationResult = vkCreateInstance(&createInfo, nullptr, &instance);
 			//SDL_assert( == VK_SUCCESS);
 			printf("\nCreated Vulkan instance\n");
+		}
+
+		// Setup the debug messenger
+		if (!requiredValidationLayers.empty()) {
+			VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+			createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
+			createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+			// createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+			createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+			createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+			createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+			createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+			createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+			createInfo.pfnUserCallback = debugCallback;
+
+			auto createDebugUtilsMessenger =
+				(PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+			SDL_assert(createDebugUtilsMessenger(instance, &createInfo, nullptr, &debugMsgr) == VK_SUCCESS);
 		}
 
 		// Create surface
@@ -603,7 +663,7 @@ namespace graphics {
 		// Submit commands
 		uint32_t swapchainImageIndex;
 		SDL_assert(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX /* no timeout */, imageAvailableSemaphore, VK_NULL_HANDLE, &swapchainImageIndex) == VK_SUCCESS);
-		printf("Rendering to image %i...\n", swapchainImageIndex);
+		// printf("Rendering to image %i...\n", swapchainImageIndex);
 
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -641,10 +701,14 @@ namespace graphics {
 
 		double presentEndT = getTime();
 
-		printf("Submit took %.3lfms. Present tool %.3lfms.\n", (presentStartT - submitStartT) * 1000, (presentEndT - presentStartT) * 1000);
+		// printf("Submit took %.3lfms. Present took %.3lfms.\n", (presentStartT - submitStartT) * 1000, (presentEndT - presentStartT) * 1000);
 	}
 
 	void destroy() {
+		auto destroyDebugUtilsMessenger =
+			(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+		destroyDebugUtilsMessenger(instance, debugMsgr, nullptr);
+
 		vkDeviceWaitIdle(device);
 
 		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
