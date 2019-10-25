@@ -1,22 +1,17 @@
 #include "graphics.h"
 #include "main.h"
 
-#include <cstdio>
-#include <vector>
-#include <fstream>
-#include <direct.h>
+#include <vulkan/vulkan.h>
 
 using namespace std;
 
-#include <SDL.h>
-#include <SDL_vulkan.h>
-#include <vulkan/vulkan.h>
+#define ENABLE_RENDERING_TIMERS 0
 
 namespace graphics {
 	const auto requiredSwapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
-	bool vsync = true;
+	bool vsync = false;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
@@ -195,7 +190,7 @@ namespace graphics {
 		switch (severity) {
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-			SDL_assert(false, "fje");
+			SDL_assert(false);
 			break;
 		default: break;
 		};
@@ -658,13 +653,19 @@ namespace graphics {
 	}
 
 	void render() {
-		double submitStartT = getTime();
 
 		// Submit commands
 		uint32_t swapchainImageIndex;
-		SDL_assert(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX /* no timeout */, imageAvailableSemaphore, VK_NULL_HANDLE, &swapchainImageIndex) == VK_SUCCESS);
-		// printf("Rendering to image %i...\n", swapchainImageIndex);
 
+#if ENABLE_RENDERING_TIMERS
+		printf("\nAquiring image... ");
+		double timerStart = getTime();
+#endif
+		SDL_assert(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX /* no timeout */, imageAvailableSemaphore, VK_NULL_HANDLE, &swapchainImageIndex) == VK_SUCCESS);
+#if ENABLE_RENDERING_TIMERS
+		printf("got image %i, took %.3lfms\n", swapchainImageIndex, (getTime() - timerStart) * 1000);
+#endif
+		
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -679,12 +680,24 @@ namespace graphics {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &renderCompletedSemaphore;
 
+#if ENABLE_RENDERING_TIMERS
+		printf("Waiting for idle queue... ");
+		timerStart = getTime();
+#endif
 		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
 		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
+#if ENABLE_RENDERING_TIMERS
+		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
+#endif
 
+#if ENABLE_RENDERING_TIMERS
+		printf("Submitting command buffers... ");
+		timerStart = getTime();
+#endif
 		SDL_assert(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
-
-		double presentStartT = getTime();
+#if ENABLE_RENDERING_TIMERS
+		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
+#endif
 
 		// Present
 		VkPresentInfoKHR presentInfo = {};
@@ -697,16 +710,19 @@ namespace graphics {
 		presentInfo.pSwapchains = &swapchain;
 		presentInfo.pImageIndices = &swapchainImageIndex;
 
+#if ENABLE_RENDERING_TIMERS
+		printf("Submitting image for presentation... ");
+		timerStart = getTime();
+#endif
 		SDL_assert(vkQueuePresentKHR(queue, &presentInfo) == VK_SUCCESS);
-
-		double presentEndT = getTime();
-
-		// printf("Submit took %.3lfms. Present took %.3lfms.\n", (presentStartT - submitStartT) * 1000, (presentEndT - presentStartT) * 1000);
+#if ENABLE_RENDERING_TIMERS
+		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
+#endif
 	}
 
 	void destroy() {
 		auto destroyDebugUtilsMessenger =
-			(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+			(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 		destroyDebugUtilsMessenger(instance, debugMsgr, nullptr);
 
 		vkDeviceWaitIdle(device);
