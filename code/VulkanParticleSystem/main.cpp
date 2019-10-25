@@ -14,6 +14,19 @@ double getTime() {
 	return (SDL_GetPerformanceCounter() - startCount) / (double)SDL_GetPerformanceFrequency();
 }
 
+void monitorFramerate(float deltaTime) {
+	static vector<float> frameTimes;
+
+	frameTimes.push_back(deltaTime);
+
+	if (frameTimes.size() >= 100) {
+		float worstTime = 0;
+		for (auto time : frameTimes) if (time > worstTime) worstTime = time;
+		frameTimes.resize(0);
+		printf("Worst frame out of 100: %.1lfms (%.1lf fps)\n", worstTime * 1000, 1 / worstTime);
+	}
+}
+
 SDL_Renderer *renderer;
 int rendererWidth, rendererHeight;
 
@@ -41,14 +54,15 @@ int main(int argc, char* argv[]) {
 
 	int setupTimeMs = (int)((getTime() - appStartTime) * 1000);
 	printf("\nSetup took %ims\n", setupTimeMs);
+
 	
 	bool running = true;
 	while (running) {
-		double deltaTime;
+		float deltaTime;
 		{
 			static double previousTime = 0;
 			double timeNow = getTime();
-			deltaTime = timeNow - previousTime;
+			deltaTime = (float)(timeNow - previousTime);
 			previousTime = timeNow;
 		}
 		
@@ -61,7 +75,7 @@ int main(int argc, char* argv[]) {
 		
 		graphics::render();
 
-		// printf("deltaTime: %.3lfms\n", deltaTime * 1000);
+		monitorFramerate(deltaTime);
 	}
 
 	graphics::destroy();
