@@ -1,13 +1,5 @@
 
 #include "main.h"
-#include "graphics.h"
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
-
-using namespace std;
 
 double getTime() {
 	static uint64_t startCount = SDL_GetPerformanceCounter();
@@ -73,7 +65,8 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		
-		graphics::render();
+		particles::update(1000, deltaTime);
+		particles::render();
 
 		monitorFramerate(deltaTime);
 	}
