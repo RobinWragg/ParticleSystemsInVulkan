@@ -1,4 +1,3 @@
-
 #include "main.h"
 
 double getTime() {
@@ -47,6 +46,7 @@ int main(int argc, char* argv[]) {
 	int setupTimeMs = (int)((getTime() - appStartTime) * 1000);
 	printf("\nSetup took %ims\n", setupTimeMs);
 
+	particles::init();
 	
 	bool running = true;
 	while (running) {

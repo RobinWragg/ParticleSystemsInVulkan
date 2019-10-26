@@ -1,9 +1,4 @@
-#include "graphics.h"
 #include "main.h"
-
-#include <vulkan/vulkan.h>
-
-using namespace std;
 
 #define ENABLE_RENDERING_TIMERS 0
 

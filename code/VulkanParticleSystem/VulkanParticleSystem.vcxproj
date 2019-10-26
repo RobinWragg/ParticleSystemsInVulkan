@@ -135,9 +135,7 @@
     <ClCompile Include="particles.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="graphics.h" />
     <ClInclude Include="main.h" />
-    <ClInclude Include="particles.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="basic.frag" />

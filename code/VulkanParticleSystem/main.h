@@ -13,9 +13,21 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 
+#include <vulkan/vulkan.h>
+
+using namespace glm;
 using namespace std;
 
-#include "graphics.h"
-#include "particles.h"
-
 double getTime();
+
+namespace graphics {
+	void init(SDL_Window *window);
+	void destroy();
+	void render();
+}
+
+namespace particles {
+	void init();
+	void update(int particleCount, float deltaTime);
+	void render();
+}
