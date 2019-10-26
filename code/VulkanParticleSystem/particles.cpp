@@ -8,7 +8,7 @@ namespace particles {
 	float randf() {
 		static bool initialised = false;
 		if (!initialised) {
-			srand(getTime() * 10000);
+			srand((int)getTime() * 10000);
 			initialised = true;
 		}
 
@@ -35,24 +35,49 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-
-
-
-		particles.push_back({ { 0.0f, 0.0f, 0.0f }, randf() });
-		particles.push_back({ { 1.0f, 0.0f, 0.0f }, randf() });
-		particles.push_back({ { 0.0f, 1.0f, 0.0f }, randf() });
-		particles.push_back({ { 0.0f, 0.0f, 0.0f }, randf() });
-		particles.push_back({ { 0.0f, 1.0f, 0.0f }, randf() });
-		particles.push_back({ { 0.0f, 0.0f, 1.0f }, randf() });
+		particles.resize(10000);
+		velocities.resize(particles.size());
+		for (int i = 0; i < particles.size(); i++) {
+			particles[i].position = { 1.1, 0.9-randf()*10, 0 };
+			velocities[i] = { 0, 0, 0 };
+		}
 	}
 
-	float cameraAngle = 0;
+	const float gravity = 1;
+	const float airResistance = 0.1;
+	const float groundLevel = 1;
+
+	float getVelocityRandComponent() {
+		float r = randf() - 0.5;
+		return r * r * r + r*0.15;
+	}
+
+	void respawn(Particle *particle, vec3 *velocity) {
+		particle->position = { -0.6, -0.2, 0 };
+		particle->brightness = randf();
+
+		vec3 spawnVelocity = { 0.4, -1, 0 };
+		const vec3 velocityRandomnessAmount = {0.6, 0.6, 0.6};
+		vec3 velocityRandomness = {
+			getVelocityRandComponent() * velocityRandomnessAmount.x,
+			getVelocityRandComponent() * velocityRandomnessAmount.y,
+			getVelocityRandComponent() * velocityRandomnessAmount.z
+		};
+
+		spawnVelocity += velocityRandomness;
+		*velocity = spawnVelocity;
+	}
 
 	void update(int particleCount, float deltaTime) {
-		cameraAngle += deltaTime;
-		while (cameraAngle >= 2 * M_PI) cameraAngle -= 2 * (float)M_PI;
-		
-		particles[0].position.x = randf();
+		float stepSize = deltaTime * 0.5;
+
+		for (int i = 0; i < particles.size(); i++) {
+			velocities[i] *= 1 - stepSize * airResistance;
+			velocities[i].y += gravity * stepSize;
+			particles[i].position += velocities[i] * stepSize;
+
+			if (particles[i].position.y > groundLevel) respawn(&particles[i], &(velocities[i]));
+		}
 	}
 
 	void render() {
