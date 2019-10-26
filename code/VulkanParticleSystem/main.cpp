@@ -41,12 +41,11 @@ int main(int argc, char* argv[]) {
 		appName, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_VULKAN);
 	SDL_assert(window != NULL);
 
-	graphics::init(window);
+	particles::init(window);
 
 	int setupTimeMs = (int)((getTime() - appStartTime) * 1000);
 	printf("\nSetup took %ims\n", setupTimeMs);
 
-	particles::init();
 	
 	bool running = true;
 	while (running) {

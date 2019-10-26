@@ -1,7 +1,5 @@
 #include "main.h"
 
-#define ENABLE_RENDERING_TIMERS 0
-
 namespace graphics {
 	const auto requiredSwapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -11,6 +9,7 @@ namespace graphics {
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
 
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkExtent2D extent;
 	int queueFamilyIndex = -1;
 	VkDebugUtilsMessengerEXT debugMsgr;
@@ -262,7 +261,46 @@ namespace graphics {
 		SDL_assert(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS);
 	}
 
-	void buildPipeline() {
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+		VkPhysicalDeviceMemoryProperties memoryProperties;
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties) return i;
+		}
+
+		SDL_assert(false);
+		return 0;
+	}
+
+	void buildVertexBuffer(vector<particles::Particle> particles, VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
+		
+		VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = sizeof(particles[0]) * particles.size();
+		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		SDL_assert(vkCreateBuffer(device, &bufferInfo, nullptr, vertexBuffer) == VK_SUCCESS);
+
+		VkMemoryRequirements memoryReqs;
+		vkGetBufferMemoryRequirements(device, *vertexBuffer, &memoryReqs);
+
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memoryReqs.size;
+		allocInfo.memoryTypeIndex = findMemoryType(memoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		SDL_assert(vkAllocateMemory(device, &allocInfo, nullptr, vertexBufferMemory) == VK_SUCCESS);
+		SDL_assert(vkBindBufferMemory(device, *vertexBuffer, *vertexBufferMemory, 0) == VK_SUCCESS);
+
+		void * data;
+		vkMapMemory(device, *vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+		memcpy(data, particles.data(), (size_t)bufferInfo.size);
+		vkUnmapMemory(device, *vertexBufferMemory);
+	}
+
+	void buildPipeline(VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
 		
 		vector<VkPipelineShaderStageCreateInfo> shaderStages = {
 			buildShaderStage("basic_vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
@@ -271,12 +309,16 @@ namespace graphics {
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 0;
-		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
+
+		vertexInputInfo.vertexAttributeDescriptionCount = (int)attribDescs.size();
+		vertexInputInfo.pVertexAttributeDescriptions = attribDescs.data();
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // TODO: change to points
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		VkViewport viewport = {};
@@ -406,7 +448,7 @@ namespace graphics {
 		return commandPool;
 	}
 
-	void buildCommandBuffers(VkCommandPool commandPool, vector<VkCommandBuffer> *commandBuffersOut) {
+	void buildCommandBuffers(VkCommandPool commandPool, VkBuffer vertexBuffer, uint32_t vertexCount, vector<VkCommandBuffer> *commandBuffersOut) {
 		commandBuffersOut->resize(framebuffers.size());
 
 		VkCommandBufferAllocateInfo bufferInfo = {};
@@ -438,7 +480,10 @@ namespace graphics {
 			vkCmdBeginRenderPass((*commandBuffersOut)[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 			vkCmdBindPipeline((*commandBuffersOut)[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-			vkCmdDraw((*commandBuffersOut)[i], 3, 1, 0, 0);
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers((*commandBuffersOut)[i], 0, 1, &vertexBuffer, offsets);
+
+			vkCmdDraw((*commandBuffersOut)[i], vertexCount, 1, 0, 0);
 
 			vkCmdEndRenderPass((*commandBuffersOut)[i]);
 
@@ -446,7 +491,7 @@ namespace graphics {
 		}
 	}
 
-	void init(SDL_Window *window) {
+	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
 		printAvailableInstanceLayers();
 
 		vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -520,7 +565,6 @@ namespace graphics {
 		printf("\nCreated SDL+Vulkan surface\n");
 
 		// Get physical device (GTX 1060 3GB)
-		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 		{
 			uint32_t deviceCount = 0;
 			vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -652,27 +696,25 @@ namespace graphics {
 		printf("\nInitialised Vulkan\n");
 
 		buildRenderPass();
-		buildPipeline();
+		buildPipeline(bindingDesc, attribDescs);
 		buildFramebuffers();
 		buildSemaphores();
 	}
 
-	void render() {
+	void render(vector<particles::Particle> particles) {
 		VkCommandPool commandPool = buildCommandPool();
+
+		VkBuffer vertexBuffer;
+		VkDeviceMemory vertexBufferMemory;
+		buildVertexBuffer(particles, &vertexBuffer, &vertexBufferMemory);
+
 		vector<VkCommandBuffer> commandBuffers;
-		buildCommandBuffers(commandPool, &commandBuffers);
+		buildCommandBuffers(commandPool, vertexBuffer, particles.size(), &commandBuffers);
 
 		// Submit commands
 		uint32_t swapchainImageIndex;
 
-#if ENABLE_RENDERING_TIMERS
-		printf("\nAquiring image... ");
-		double timerStart = getTime();
-#endif
 		SDL_assert(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX /* no timeout */, imageAvailableSemaphore, VK_NULL_HANDLE, &swapchainImageIndex) == VK_SUCCESS);
-#if ENABLE_RENDERING_TIMERS
-		printf("got image %i, took %.3lfms\n", swapchainImageIndex, (getTime() - timerStart) * 1000);
-#endif
 		
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -688,24 +730,10 @@ namespace graphics {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &renderCompletedSemaphore;
 
-#if ENABLE_RENDERING_TIMERS
-		printf("Waiting for idle queue for submission... ");
-		timerStart = getTime();
-#endif
 		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
 		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
-#if ENABLE_RENDERING_TIMERS
-		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
-#endif
 
-#if ENABLE_RENDERING_TIMERS
-		printf("Submitting command buffers... ");
-		timerStart = getTime();
-#endif
 		SDL_assert(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
-#if ENABLE_RENDERING_TIMERS
-		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
-#endif
 
 		// Present
 		VkPresentInfoKHR presentInfo = {};
@@ -718,25 +746,13 @@ namespace graphics {
 		presentInfo.pSwapchains = &swapchain;
 		presentInfo.pImageIndices = &swapchainImageIndex;
 
-#if ENABLE_RENDERING_TIMERS
-		printf("Submitting image for presentation... ");
-		timerStart = getTime();
-#endif
 		SDL_assert(vkQueuePresentKHR(queue, &presentInfo) == VK_SUCCESS);
-#if ENABLE_RENDERING_TIMERS
-		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
-#endif
 
-#if ENABLE_RENDERING_TIMERS
-		printf("Waiting for idle queue for command pool destruction... ");
-		timerStart = getTime();
-#endif
 		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
 		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
-#if ENABLE_RENDERING_TIMERS
-		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
-#endif
 
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vkFreeMemory(device, vertexBufferMemory, nullptr);
 		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 

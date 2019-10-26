@@ -20,14 +20,23 @@ using namespace std;
 
 double getTime();
 
+namespace particles {
+	struct Particle;
+}
+
 namespace graphics {
-	void init(SDL_Window *window);
+	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs);
 	void destroy();
-	void render();
+	void render(vector<particles::Particle> particles);
 }
 
 namespace particles {
-	void init();
+	struct Particle {
+		vec3 position;
+		float brightness;
+	};
+
+	void init(SDL_Window *window);
 	void update(int particleCount, float deltaTime);
 	void render();
 }

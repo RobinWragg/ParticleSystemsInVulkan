@@ -1,14 +1,21 @@
 #include "main.h"
 
 namespace particles {
-	struct Particle {
-		vec3 position;
-		float brightness;
-	};
-
+	
 	vector<Particle> particles;
+	vector<vec3> velocities;
 
-	void init() {
+	float randf() {
+		static bool initialised = false;
+		if (!initialised) {
+			srand(getTime() * 10000);
+			initialised = true;
+		}
+
+		return rand() / (float)RAND_MAX;
+	}
+
+	void init(SDL_Window *window) {
 		VkVertexInputBindingDescription bindingDesc = {};
 		bindingDesc.binding = 0;
 		bindingDesc.stride = sizeof(Particle);
@@ -26,15 +33,17 @@ namespace particles {
 		brightnessAttribDesc.format = VK_FORMAT_R32_SFLOAT;
 		brightnessAttribDesc.offset = offsetof(Particle, brightness);
 
+		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
 
 
-		particles.push_back({ { 0.0f, 0.0f, 0.0f }, 0.0f });
-		particles.push_back({ { 1.0f, 0.0f, 0.0f }, 0.1f });
-		particles.push_back({ { 0.0f, 1.0f, 0.0f }, 0.2f });
-		particles.push_back({ { 0.0f, 0.0f, 0.0f }, 0.3f });
-		particles.push_back({ { 0.0f, 1.0f, 0.0f }, 0.4f });
-		particles.push_back({ { 0.0f, 0.0f, 1.0f }, 0.5f });
+
+		particles.push_back({ { 0.0f, 0.0f, 0.0f }, randf() });
+		particles.push_back({ { 1.0f, 0.0f, 0.0f }, randf() });
+		particles.push_back({ { 0.0f, 1.0f, 0.0f }, randf() });
+		particles.push_back({ { 0.0f, 0.0f, 0.0f }, randf() });
+		particles.push_back({ { 0.0f, 1.0f, 0.0f }, randf() });
+		particles.push_back({ { 0.0f, 0.0f, 1.0f }, randf() });
 	}
 
 	float cameraAngle = 0;
@@ -42,10 +51,12 @@ namespace particles {
 	void update(int particleCount, float deltaTime) {
 		cameraAngle += deltaTime;
 		while (cameraAngle >= 2 * M_PI) cameraAngle -= 2 * (float)M_PI;
+		
+		particles[0].position.x = randf();
 	}
 
 	void render() {
-		graphics::render();
+		graphics::render(particles);
 	}
 }
 
