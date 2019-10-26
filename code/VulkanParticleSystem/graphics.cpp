@@ -11,10 +11,10 @@ namespace graphics {
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
 
+	VkExtent2D extent;
+	int queueFamilyIndex = -1;
 	VkDebugUtilsMessengerEXT debugMsgr;
 	VkQueue queue = VK_NULL_HANDLE;
-	VkCommandPool commandPool = VK_NULL_HANDLE;
-	vector<VkCommandBuffer> commandBuffers;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkPipeline pipeline = VK_NULL_HANDLE;
 	VkRenderPass renderPass = VK_NULL_HANDLE;
@@ -262,7 +262,7 @@ namespace graphics {
 		SDL_assert(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS);
 	}
 
-	void buildPipeline(VkExtent2D extent) {
+	void buildPipeline() {
 		
 		vector<VkPipelineShaderStageCreateInfo> shaderStages = {
 			buildShaderStage("basic_vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
@@ -305,7 +305,7 @@ namespace graphics {
 		rasterInfo.rasterizerDiscardEnable = VK_FALSE;
 		rasterInfo.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterInfo.lineWidth = 1; // TODO: unnecessary?
-		rasterInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterInfo.cullMode = VK_CULL_MODE_NONE;
 		rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterInfo.depthBiasEnable = VK_FALSE;
 
@@ -357,7 +357,7 @@ namespace graphics {
 		for (auto &stage : shaderStages) vkDestroyShaderModule(device, stage.module, nullptr);
 	}
 
-	void buildFramebuffers(VkExtent2D extent) {
+	void buildFramebuffers() {
 		framebuffers.resize(swapchainViews.size());
 
 		for (int i = 0; i < swapchainViews.size(); i++) {
@@ -378,14 +378,23 @@ namespace graphics {
 		}
 	}
 
-	void buildCommandPoolAndBuffers(int queueFamilyIndex, VkExtent2D extent) {
+	void buildSemaphores() {
+		VkSemaphoreCreateInfo semaphoreInfo = {};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		SDL_assert(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) == VK_SUCCESS);
+		SDL_assert(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderCompletedSemaphore) == VK_SUCCESS);
+	}
+
+	VkCommandPool buildCommandPool() {
+		VkCommandPool commandPool;
+
 		VkCommandPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.queueFamilyIndex = queueFamilyIndex;
 		poolInfo.flags = 0; // TODO: optimisation possible?
 		SDL_assert(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) == VK_SUCCESS);
 
-		commandBuffers.resize(framebuffers.size());
+		vector<VkCommandBuffer> commandBuffers(framebuffers.size());
 
 		VkCommandBufferAllocateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -393,13 +402,26 @@ namespace graphics {
 		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: optimise by reusing commands (secondary buffer level)?
 		bufferInfo.commandBufferCount = (int)commandBuffers.size();
 		SDL_assert(vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers.data()) == VK_SUCCESS);
+		
+		return commandPool;
+	}
 
-		for (int i = 0; i < commandBuffers.size(); i++) {
+	void buildCommandBuffers(VkCommandPool commandPool, vector<VkCommandBuffer> *commandBuffersOut) {
+		commandBuffersOut->resize(framebuffers.size());
+
+		VkCommandBufferAllocateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		bufferInfo.commandPool = commandPool;
+		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: optimise by reusing commands (secondary buffer level)?
+		bufferInfo.commandBufferCount = (int)commandBuffersOut->size();
+		SDL_assert(vkAllocateCommandBuffers(device, &bufferInfo, commandBuffersOut->data()) == VK_SUCCESS);
+
+		for (int i = 0; i < commandBuffersOut->size(); i++) {
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0; // TODO: optimisation possible?
 			beginInfo.pInheritanceInfo = nullptr; // TODO: for secondary buffers
-			SDL_assert(vkBeginCommandBuffer(commandBuffers[i], &beginInfo) == VK_SUCCESS);
+			SDL_assert(vkBeginCommandBuffer((*commandBuffersOut)[i], &beginInfo) == VK_SUCCESS);
 
 			VkRenderPassBeginInfo renderPassInfo = {};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -413,23 +435,15 @@ namespace graphics {
 			renderPassInfo.renderArea.offset = { 0, 0 };
 			renderPassInfo.renderArea.extent = extent;
 
-			vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			vkCmdBeginRenderPass((*commandBuffersOut)[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBindPipeline((*commandBuffersOut)[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-			vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+			vkCmdDraw((*commandBuffersOut)[i], 3, 1, 0, 0);
 
-			vkCmdEndRenderPass(commandBuffers[i]);
+			vkCmdEndRenderPass((*commandBuffersOut)[i]);
 
-			SDL_assert(vkEndCommandBuffer(commandBuffers[i]) == VK_SUCCESS);
+			SDL_assert(vkEndCommandBuffer((*commandBuffersOut)[i]) == VK_SUCCESS);
 		}
-	}
-
-	void buildSemaphores() {
-		VkSemaphoreCreateInfo semaphoreInfo = {};
-		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		SDL_assert(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) == VK_SUCCESS);
-		SDL_assert(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderCompletedSemaphore) == VK_SUCCESS);
 	}
 
 	void init(SDL_Window *window) {
@@ -535,7 +549,6 @@ namespace graphics {
 		}
 
 		// Create the logical device with a queue capable of graphics and surface presentation commands
-		int queueFamilyIndex = -1;
 		{
 			vector<VkDeviceQueueCreateInfo> queueInfos = {
 				buildQueueCreateInfo(physicalDevice, VK_QUEUE_GRAPHICS_BIT, true)
@@ -575,12 +588,10 @@ namespace graphics {
 		}
 		
 		// Create the swapchain
-		VkExtent2D imageExtent;
-
 		{
 			VkSurfaceCapabilitiesKHR capabilities;
 			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
-			imageExtent = capabilities.currentExtent;
+			extent = capabilities.currentExtent;
 
 			uint32_t presentModeCount;
 			vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
@@ -593,7 +604,7 @@ namespace graphics {
 			createInfo.minImageCount = requiredSwapchainImageCount;
 			createInfo.imageFormat = requiredSwapchainFormat;
 			createInfo.imageColorSpace = requiredSwapchainColorSpace;
-			createInfo.imageExtent = imageExtent;
+			createInfo.imageExtent = extent;
 			createInfo.imageArrayLayers = 1; // 1 == not stereoscopic
 			createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // Suitable for VkFrameBuffer
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // the graphics and surface queues are the same, so no sharing is necessary.
@@ -641,13 +652,15 @@ namespace graphics {
 		printf("\nInitialised Vulkan\n");
 
 		buildRenderPass();
-		buildPipeline(imageExtent);
-		buildFramebuffers(imageExtent);
-		buildCommandPoolAndBuffers(queueFamilyIndex, imageExtent);
+		buildPipeline();
+		buildFramebuffers();
 		buildSemaphores();
 	}
 
 	void render() {
+		VkCommandPool commandPool = buildCommandPool();
+		vector<VkCommandBuffer> commandBuffers;
+		buildCommandBuffers(commandPool, &commandBuffers);
 
 		// Submit commands
 		uint32_t swapchainImageIndex;
@@ -676,7 +689,7 @@ namespace graphics {
 		submitInfo.pSignalSemaphores = &renderCompletedSemaphore;
 
 #if ENABLE_RENDERING_TIMERS
-		printf("Waiting for idle queue... ");
+		printf("Waiting for idle queue for submission... ");
 		timerStart = getTime();
 #endif
 		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
@@ -713,6 +726,18 @@ namespace graphics {
 #if ENABLE_RENDERING_TIMERS
 		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
 #endif
+
+#if ENABLE_RENDERING_TIMERS
+		printf("Waiting for idle queue for command pool destruction... ");
+		timerStart = getTime();
+#endif
+		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
+		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
+#if ENABLE_RENDERING_TIMERS
+		printf("Took %.3lfms\n", (getTime() - timerStart) * 1000);
+#endif
+
+		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 
 	void destroy() {
@@ -726,7 +751,7 @@ namespace graphics {
 		vkDestroySemaphore(device, renderCompletedSemaphore, nullptr);
 
 		for (auto &buffer : framebuffers) vkDestroyFramebuffer(device, buffer, nullptr);
-		vkDestroyCommandPool(device, commandPool, nullptr);
+		
 		vkDestroyPipeline(device, pipeline, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyRenderPass(device, renderPass, nullptr);

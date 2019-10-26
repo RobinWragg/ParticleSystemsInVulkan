@@ -14,6 +14,21 @@ namespace particles {
 		bindingDesc.stride = sizeof(Particle);
 		bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
+		VkVertexInputAttributeDescription positionAttribDesc = {};
+		positionAttribDesc.binding = 0;
+		positionAttribDesc.location = 0;
+		positionAttribDesc.format = VK_FORMAT_R32G32B32_SFLOAT;
+		positionAttribDesc.offset = offsetof(Particle, position);
+
+		VkVertexInputAttributeDescription brightnessAttribDesc = {};
+		brightnessAttribDesc.binding = 0;
+		brightnessAttribDesc.location = 1;
+		brightnessAttribDesc.format = VK_FORMAT_R32_SFLOAT;
+		brightnessAttribDesc.offset = offsetof(Particle, brightness);
+
+
+
+
 		particles.push_back({ { 0.0f, 0.0f, 0.0f }, 0.0f });
 		particles.push_back({ { 1.0f, 0.0f, 0.0f }, 0.1f });
 		particles.push_back({ { 0.0f, 1.0f, 0.0f }, 0.2f });
