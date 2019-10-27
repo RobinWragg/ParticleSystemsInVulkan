@@ -35,7 +35,7 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(10000);
+		particles.resize(500000);
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
 			particles[i].position = { 1.1, 0.9-randf()*10, 0 };
@@ -62,16 +62,12 @@ namespace particles {
 		particle->position = { -0.6, -0.2, 0 };
 		particle->brightness = randf();
 
-		vec3 spawnVelocity = { 0.4, -1, 0 };
-		const vec3 velocityRandomnessAmount = {0.6, 0.6, 0.6};
-		vec3 velocityRandomness = {
-			getVelocityRandComponent() * velocityRandomnessAmount.x,
-			getVelocityRandComponent() * velocityRandomnessAmount.y,
-			getVelocityRandComponent() * velocityRandomnessAmount.z
-		};
+		vec3 baseVelocity = { 0.4, -1, 0 };
+		const float velocityRandomnessAmount = 0.3;
+		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, randf()-0.5f };
+		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.9f+0.1f);
 
-		spawnVelocity += velocityRandomness;
-		*velocity = spawnVelocity;
+		*velocity = baseVelocity + velocityRandomness;
 	}
 
 	void update(int particleCount, float deltaTime) {

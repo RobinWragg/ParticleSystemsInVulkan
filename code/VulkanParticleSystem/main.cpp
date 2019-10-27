@@ -25,10 +25,10 @@ int main(int argc, char* argv[]) {
 	const char *appName = "Vulkan Particle System";
 
 	int result = SDL_Init(SDL_INIT_EVERYTHING);
-	SDL_assert(result == 0);
+	SDL_assert_release(result == 0);
 
 	char *path = SDL_GetBasePath();
-	SDL_assert(SetCurrentDirectory(path));
+	SDL_assert_release(SetCurrentDirectory(path));
 	SDL_free(path);
 
 	double appStartTime = getTime();
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 
 	SDL_Window *window = SDL_CreateWindow(
 		appName, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_VULKAN);
-	SDL_assert(window != NULL);
+	SDL_assert_release(window != NULL);
 
 	particles::init(window);
 
