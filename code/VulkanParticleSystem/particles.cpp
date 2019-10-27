@@ -59,16 +59,20 @@ namespace particles {
 
 		*velocity = baseVelocity + velocityRandomness;
 	}
+	
+	void updateOneParticle(int32_t i, float stepSize) {
+		velocities[i] *= 1 - stepSize * airResistance;
+		velocities[i].y += gravity * stepSize;
+		particles[i].position += velocities[i] * stepSize;
+
+		if (particles[i].position.y > groundLevel) respawn(&particles[i], &(velocities[i]));
+	}
 
 	void update(int particleCount, float deltaTime) {
 		float stepSize = deltaTime * 0.5f;
 
 		for (int i = 0; i < particles.size(); i++) {
-			velocities[i] *= 1 - stepSize * airResistance;
-			velocities[i].y += gravity * stepSize;
-			particles[i].position += velocities[i] * stepSize;
-
-			if (particles[i].position.y > groundLevel) respawn(&particles[i], &(velocities[i]));
+			updateOneParticle(i, stepSize);
 		}
 	}
 
