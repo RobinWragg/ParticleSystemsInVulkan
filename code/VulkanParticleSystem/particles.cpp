@@ -35,11 +35,11 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(500000);
+		particles.resize(100000);
 
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
-			particles[i].position = { 1.1, 1-randf()*10, 0 };
+			particles[i].position = { 1.1, 0.8-randf()*10, 0 };
 			velocities[i] = { 0, 0, 0 };
 		}
 	}
@@ -49,13 +49,13 @@ namespace particles {
 	const float groundLevel = 1;
 
 	void respawn(Particle *particle, vec3 *velocity) {
-		particle->position = { -0.6, -0.2, 0 };
+		particle->position = { -0.7, -0.1, 0.5 };
 		particle->brightness = randf();
 
 		vec3 baseVelocity = { 0.4, -1, 0 };
 		const float velocityRandomnessAmount = 0.3;
-		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, randf()-0.5f };
-		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.9f+0.1f);
+		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, (randf()-0.5f)*0.5 };
+		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.95f+0.05f);
 
 		*velocity = baseVelocity + velocityRandomness;
 	}
