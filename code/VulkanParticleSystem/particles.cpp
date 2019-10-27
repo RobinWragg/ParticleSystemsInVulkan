@@ -36,9 +36,10 @@ namespace particles {
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
 		particles.resize(500000);
+
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
-			particles[i].position = { 1.1, 0.9-randf()*10, 0 };
+			particles[i].position = { 1.1, 1-randf()*10, 0 };
 			velocities[i] = { 0, 0, 0 };
 		}
 	}
@@ -46,17 +47,6 @@ namespace particles {
 	const float gravity = 1;
 	const float airResistance = 0.1;
 	const float groundLevel = 1;
-
-	float getVelocityRandComponent() {
-		// Generate a random number between -0.5 and +0.5
-		const float r = randf() - 0.5;
-
-		// Cube it to push the average distribution closer to 0
-		const float cubed = r * r * r;
-
-		// Add some of the orginal 'r' back in to prevent too many values collecting at < 0.01
-		return cubed + r * 0.15;
-	}
 
 	void respawn(Particle *particle, vec3 *velocity) {
 		particle->position = { -0.6, -0.2, 0 };
