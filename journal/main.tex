@@ -63,6 +63,10 @@ At this point I've written over 500 lines of Vulkan initialisation code. That in
 
 It certainly helps to have some background knowledge of rendering with OpenGL. This is tons of code just for setup, but I don't think it suggests the API is poor. It's clearly about giving the graphics driver as much useful information as possible so it can remove unnecessary execution steps. I imagine another effect of this explicit API style is to make Vulkan more future-proof and able to support various edge cases not known when the specification was created. It would be interesting to study how the API incorporates real-time ray-tracing, as that's a fairly new rendering style that needs to slot in next to the existing model, but I need to focus on the core of the project, which right now is getting triangles on the screen so I can start writing the particle system.
 
+\section{Planning the Next Stages}
+
+My plan is to implement a basic particle system, then set up a testing framework that 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliographystyle{agsm}
 \bibliography{other_refs}
