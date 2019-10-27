@@ -48,8 +48,14 @@ namespace particles {
 	const float groundLevel = 1;
 
 	float getVelocityRandComponent() {
-		float r = randf() - 0.5;
-		return r * r * r + r*0.15;
+		// Generate a random number between -0.5 and +0.5
+		const float r = randf() - 0.5;
+
+		// Cube it to push the average distribution closer to 0
+		const float cubed = r * r * r;
+
+		// Add some of the orginal 'r' back in to prevent too many values collecting at < 0.01
+		return cubed + r * 0.15;
 	}
 
 	void respawn(Particle *particle, vec3 *velocity) {

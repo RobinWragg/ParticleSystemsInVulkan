@@ -28,7 +28,7 @@ namespace graphics {
 	vector<uint8_t> loadBinaryFile(const char *filename) {
 		ifstream file(filename, ios::ate | ios::binary);
 
-		SDL_assert(file.is_open());
+		SDL_assert_release(file.is_open());
 
 		vector<uint8_t> bytes(file.tellg());
 		file.seekg(0);
@@ -123,7 +123,7 @@ namespace graphics {
 			}
 		}
 
-		SDL_assert(selectedIndex >= 0);
+		SDL_assert_release(selectedIndex >= 0);
 
 		VkDeviceQueueCreateInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -184,7 +184,7 @@ namespace graphics {
 		switch (severity) {
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-			SDL_assert(false);
+			SDL_assert_release(false);
 			break;
 		default: break;
 		};
@@ -200,8 +200,8 @@ namespace graphics {
 		moduleInfo.codeSize = spirV.size();
 		moduleInfo.pCode = (uint32_t*)spirV.data();
 
-		VkShaderModule module;
-		SDL_assert(vkCreateShaderModule(device, &moduleInfo, nullptr, &module) == VK_SUCCESS);
+		VkShaderModule module = VK_NULL_HANDLE;
+		SDL_assert_release(vkCreateShaderModule(device, &moduleInfo, nullptr, &module) == VK_SUCCESS);
 
 		VkPipelineShaderStageCreateInfo stageInfo = {};
 		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -258,7 +258,7 @@ namespace graphics {
 		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
 
-		SDL_assert(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS);
+		SDL_assert_release(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS);
 	}
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -269,7 +269,7 @@ namespace graphics {
 			if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties) return i;
 		}
 
-		SDL_assert(false);
+		SDL_assert_release(false);
 		return 0;
 	}
 
@@ -281,7 +281,8 @@ namespace graphics {
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		SDL_assert(vkCreateBuffer(device, &bufferInfo, nullptr, vertexBuffer) == VK_SUCCESS);
+		auto result = vkCreateBuffer(device, &bufferInfo, nullptr, vertexBuffer);
+		SDL_assert(result == VK_SUCCESS);
 
 		VkMemoryRequirements memoryReqs;
 		vkGetBufferMemoryRequirements(device, *vertexBuffer, &memoryReqs);
@@ -291,8 +292,10 @@ namespace graphics {
 		allocInfo.allocationSize = memoryReqs.size;
 		allocInfo.memoryTypeIndex = findMemoryType(memoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		SDL_assert(vkAllocateMemory(device, &allocInfo, nullptr, vertexBufferMemory) == VK_SUCCESS);
-		SDL_assert(vkBindBufferMemory(device, *vertexBuffer, *vertexBufferMemory, 0) == VK_SUCCESS);
+		result = vkAllocateMemory(device, &allocInfo, nullptr, vertexBufferMemory);
+		SDL_assert(result == VK_SUCCESS);
+		result = vkBindBufferMemory(device, *vertexBuffer, *vertexBufferMemory, 0);
+		SDL_assert(result == VK_SUCCESS);
 
 		void * data;
 		vkMapMemory(device, *vertexBufferMemory, 0, bufferInfo.size, 0, &data);
@@ -377,7 +380,7 @@ namespace graphics {
 
 		VkPipelineLayoutCreateInfo layoutInfo = {};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		SDL_assert(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
+		SDL_assert_release(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
 
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -394,7 +397,7 @@ namespace graphics {
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = renderPass;
 		pipelineInfo.subpass = 0;
-		SDL_assert(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) == VK_SUCCESS);
+		SDL_assert_release(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) == VK_SUCCESS);
 
 		for (auto &stage : shaderStages) vkDestroyShaderModule(device, stage.module, nullptr);
 	}
@@ -416,25 +419,26 @@ namespace graphics {
 			framebufferInfo.height = extent.height;
 			framebufferInfo.layers = 1;
 
-			SDL_assert(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffers[i]) == VK_SUCCESS);
+			SDL_assert_release(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffers[i]) == VK_SUCCESS);
 		}
 	}
 
 	void buildSemaphores() {
 		VkSemaphoreCreateInfo semaphoreInfo = {};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		SDL_assert(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) == VK_SUCCESS);
-		SDL_assert(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderCompletedSemaphore) == VK_SUCCESS);
+		SDL_assert_release(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) == VK_SUCCESS);
+		SDL_assert_release(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderCompletedSemaphore) == VK_SUCCESS);
 	}
 
 	VkCommandPool buildCommandPool() {
-		VkCommandPool commandPool;
+		VkCommandPool commandPool = VK_NULL_HANDLE;
 
 		VkCommandPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.queueFamilyIndex = queueFamilyIndex;
 		poolInfo.flags = 0; // TODO: optimisation possible?
-		SDL_assert(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) == VK_SUCCESS);
+		auto result = vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool);
+		SDL_assert(result == VK_SUCCESS);
 
 		vector<VkCommandBuffer> commandBuffers(framebuffers.size());
 
@@ -443,7 +447,8 @@ namespace graphics {
 		bufferInfo.commandPool = commandPool;
 		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: optimise by reusing commands (secondary buffer level)?
 		bufferInfo.commandBufferCount = (int)commandBuffers.size();
-		SDL_assert(vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers.data()) == VK_SUCCESS);
+		result = vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers.data());
+		SDL_assert(result == VK_SUCCESS);
 		
 		return commandPool;
 	}
@@ -456,14 +461,16 @@ namespace graphics {
 		bufferInfo.commandPool = commandPool;
 		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: optimise by reusing commands (secondary buffer level)?
 		bufferInfo.commandBufferCount = (int)commandBuffersOut->size();
-		SDL_assert(vkAllocateCommandBuffers(device, &bufferInfo, commandBuffersOut->data()) == VK_SUCCESS);
+		auto result = vkAllocateCommandBuffers(device, &bufferInfo, commandBuffersOut->data());
+		SDL_assert(result == VK_SUCCESS);
 
 		for (int i = 0; i < commandBuffersOut->size(); i++) {
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0; // TODO: optimisation possible?
 			beginInfo.pInheritanceInfo = nullptr; // TODO: for secondary buffers
-			SDL_assert(vkBeginCommandBuffer((*commandBuffersOut)[i], &beginInfo) == VK_SUCCESS);
+			result = vkBeginCommandBuffer((*commandBuffersOut)[i], &beginInfo);
+			SDL_assert(result == VK_SUCCESS);
 
 			VkRenderPassBeginInfo renderPassInfo = {};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -487,7 +494,8 @@ namespace graphics {
 
 			vkCmdEndRenderPass((*commandBuffersOut)[i]);
 
-			SDL_assert(vkEndCommandBuffer((*commandBuffersOut)[i]) == VK_SUCCESS);
+			result = vkEndCommandBuffer((*commandBuffersOut)[i]);
+			SDL_assert(result == VK_SUCCESS);
 		}
 	}
 
@@ -535,7 +543,7 @@ namespace graphics {
 			createInfo.ppEnabledLayerNames = requiredValidationLayers.data();
 
 			auto creationResult = vkCreateInstance(&createInfo, nullptr, &instance);
-			//SDL_assert( == VK_SUCCESS);
+			//SDL_assert_release( == VK_SUCCESS);
 			printf("\nCreated Vulkan instance\n");
 		}
 
@@ -557,11 +565,11 @@ namespace graphics {
 
 			auto createDebugUtilsMessenger =
 				(PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-			SDL_assert(createDebugUtilsMessenger(instance, &createInfo, nullptr, &debugMsgr) == VK_SUCCESS);
+			SDL_assert_release(createDebugUtilsMessenger(instance, &createInfo, nullptr, &debugMsgr) == VK_SUCCESS);
 		}
 
 		// Create surface
-		SDL_assert(SDL_Vulkan_CreateSurface(window, instance, &surface));
+		SDL_assert_release(SDL_Vulkan_CreateSurface(window, instance, &surface));
 		printf("\nCreated SDL+Vulkan surface\n");
 
 		// Get physical device (GTX 1060 3GB)
@@ -585,7 +593,7 @@ namespace graphics {
 				}
 			}
 
-			SDL_assert(physicalDevice != VK_NULL_HANDLE);
+			SDL_assert_release(physicalDevice != VK_NULL_HANDLE);
 
 			VkPhysicalDeviceProperties properties;
 			vkGetPhysicalDeviceProperties(physicalDevice, &properties);
@@ -620,14 +628,14 @@ namespace graphics {
 				//deviceCreateInfo.ppEnabledLayerNames = requiredValidationLayers.data();
 			}
 
-			SDL_assert(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) == VK_SUCCESS);
-			SDL_assert(device != VK_NULL_HANDLE);
+			SDL_assert_release(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) == VK_SUCCESS);
+			SDL_assert_release(device != VK_NULL_HANDLE);
 			printf("\nCreated logical device\n");
 
 			// Get a handle to the new queue
 			int queueIndex = 0; // Only one queue per VkDeviceQueueCreateInfo was created, so this is 0.
 			vkGetDeviceQueue(device, queueInfos[0].queueFamilyIndex, queueIndex, &queue);
-			SDL_assert(queue != VK_NULL_HANDLE);
+			SDL_assert_release(queue != VK_NULL_HANDLE);
 			printf("\nCreated queue at family index %i\n", queueInfos[0].queueFamilyIndex);
 		}
 		
@@ -658,7 +666,7 @@ namespace graphics {
 			createInfo.clipped = VK_FALSE; // Vulkan will always render all the pixels, even if some are osbscured by other windows.
 			createInfo.oldSwapchain = VK_NULL_HANDLE; // I will not support swapchain recreation.
 
-			SDL_assert(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain) == VK_SUCCESS);
+			SDL_assert_release(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain) == VK_SUCCESS);
 			printf("\nCreated swapchain with %i images\n", requiredSwapchainImageCount);
 		}
 
@@ -666,10 +674,10 @@ namespace graphics {
 		{
 			uint32_t actualImageCount;
 			vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, nullptr);
-			SDL_assert(actualImageCount >= requiredSwapchainImageCount);
+			SDL_assert_release(actualImageCount >= requiredSwapchainImageCount);
 			swapchainImages.resize(actualImageCount);
 			swapchainViews.resize(actualImageCount);
-			SDL_assert(vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, swapchainImages.data()) == VK_SUCCESS);
+			SDL_assert_release(vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, swapchainImages.data()) == VK_SUCCESS);
 
 			for (int i = 0; i < swapchainImages.size(); i++) {
 				VkImageViewCreateInfo createInfo = {};
@@ -689,7 +697,7 @@ namespace graphics {
 				createInfo.subresourceRange.baseArrayLayer = 0;
 				createInfo.subresourceRange.layerCount = 1;
 				
-				SDL_assert(vkCreateImageView(device, &createInfo, nullptr, &swapchainViews[i]) == VK_SUCCESS);
+				SDL_assert_release(vkCreateImageView(device, &createInfo, nullptr, &swapchainViews[i]) == VK_SUCCESS);
 			}
 		}
 
@@ -704,17 +712,18 @@ namespace graphics {
 	void render(vector<particles::Particle> particles) {
 		VkCommandPool commandPool = buildCommandPool();
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexBufferMemory;
+		VkBuffer vertexBuffer = VK_NULL_HANDLE;
+		VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
 		buildVertexBuffer(particles, &vertexBuffer, &vertexBufferMemory);
 
 		vector<VkCommandBuffer> commandBuffers;
-		buildCommandBuffers(commandPool, vertexBuffer, particles.size(), &commandBuffers);
+		buildCommandBuffers(commandPool, vertexBuffer, (uint32_t)particles.size(), &commandBuffers);
 
 		// Submit commands
-		uint32_t swapchainImageIndex;
+		uint32_t swapchainImageIndex = INT32_MAX;
 
-		SDL_assert(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX /* no timeout */, imageAvailableSemaphore, VK_NULL_HANDLE, &swapchainImageIndex) == VK_SUCCESS);
+		auto result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX /* no timeout */, imageAvailableSemaphore, VK_NULL_HANDLE, &swapchainImageIndex);
+		SDL_assert(result == VK_SUCCESS);
 		
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -733,7 +742,8 @@ namespace graphics {
 		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
 		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
 
-		SDL_assert(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
+		result = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+		SDL_assert(result == VK_SUCCESS);
 
 		// Present
 		VkPresentInfoKHR presentInfo = {};
@@ -746,7 +756,8 @@ namespace graphics {
 		presentInfo.pSwapchains = &swapchain;
 		presentInfo.pImageIndices = &swapchainImageIndex;
 
-		SDL_assert(vkQueuePresentKHR(queue, &presentInfo) == VK_SUCCESS);
+		result = vkQueuePresentKHR(queue, &presentInfo);
+		SDL_assert(result == VK_SUCCESS);
 
 		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
 		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
