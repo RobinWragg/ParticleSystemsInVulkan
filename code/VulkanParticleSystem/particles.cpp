@@ -60,6 +60,22 @@ namespace particles {
 		*velocity = baseVelocity + velocityRandomness;
 	}
 	
+	mutex particleMutex;
+	int32_t nextParticleIndexToUpdate = 0;
+	
+	int32_t requestParticleIndex() {
+		int32_t index;
+		
+		particleMutex.lock();
+		
+		if (nextParticleIndexToUpdate < particles.size()) index = nextParticleIndexToUpdate++;
+		else index = -1;
+		
+		particleMutex.unlock();
+		
+		return index;
+	}
+	
 	void updateOneParticle(int32_t i, float stepSize) {
 		velocities[i] *= 1 - stepSize * airResistance;
 		velocities[i].y += gravity * stepSize;
@@ -67,13 +83,26 @@ namespace particles {
 
 		if (particles[i].position.y > groundLevel) respawn(&particles[i], &(velocities[i]));
 	}
+	
+	void updaterThread(float stepSize) {
+		while (true) {
+			int32_t i = requestParticleIndex();
+			
+			if (i < 0) break;
+			
+			updateOneParticle(i, stepSize);
+		}
+	}
 
 	void update(int particleCount, float deltaTime) {
 		float stepSize = deltaTime * 0.5f;
-
-		for (int i = 0; i < particles.size(); i++) {
-			updateOneParticle(i, stepSize);
-		}
+		
+		nextParticleIndexToUpdate = 0;
+		
+		vector<thread> threads;
+		threads.push_back(thread(updaterThread, stepSize));
+		
+		for (auto &thr : threads) thr.join();
 	}
 
 	void render() {
