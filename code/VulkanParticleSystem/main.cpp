@@ -14,7 +14,7 @@ void monitorFramerate(float deltaTime) {
 		float worstTime = 0;
 		for (auto time : frameTimes) if (time > worstTime) worstTime = time;
 		frameTimes.resize(0);
-		printf("Worst frame out of 100: %.1lfms (%.1lf fps)\n", worstTime * 1000, 1 / worstTime);
+		printf("Worst frame out of 100: %.2f ms (%.1f fps)\n", worstTime * 1000, 1 / worstTime);
 	}
 }
 
