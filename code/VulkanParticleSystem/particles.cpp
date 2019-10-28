@@ -100,7 +100,12 @@ namespace particles {
 		nextParticleIndexToUpdate = 0;
 		
 		vector<thread> threads;
-		threads.push_back(thread(updaterThread, stepSize));
+		
+		for (int i = 0; i < thread::hardware_concurrency(); i++) {
+			threads.push_back(thread(updaterThread, stepSize));
+		}
+		
+		printf("Updating particles using %i threads\n", thread::hardware_concurrency());
 		
 		for (auto &thr : threads) thr.join();
 	}

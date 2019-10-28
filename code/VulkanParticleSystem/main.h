@@ -2,6 +2,8 @@
 
 #include <cstdio>
 #include <vector>
+#include <thread>
+#include <mutex>
 #include <fstream>
 #include <windows.h>
 
