@@ -4,15 +4,11 @@ namespace particles {
 	
 	vector<Particle> particles;
 	vector<vec3> velocities;
+	mutex particleMutex;
 
 	float randf() {
-		static bool initialised = false;
-		if (!initialised) {
-			srand(SDL_GetPerformanceCounter());
-			initialised = true;
-		}
-
-		return rand() / (float)RAND_MAX;
+		static mt19937 randomGenerator(SDL_GetPerformanceCounter());
+		return (randomGenerator.min() + randomGenerator()) / (float)randomGenerator.max();
 	}
 
 	void init(SDL_Window *window) {
@@ -60,7 +56,6 @@ namespace particles {
 		*velocity = baseVelocity + velocityRandomness;
 	}
 	
-	mutex particleMutex;
 	int32_t nextParticleIndexToUpdate = 0;
 	
 	int32_t requestParticleIndex() {
@@ -101,11 +96,9 @@ namespace particles {
 		
 		vector<thread> threads;
 		
-		for (int i = 0; i < thread::hardware_concurrency(); i++) {
+		for (uint32_t i = 0; i < thread::hardware_concurrency(); i++) {
 			threads.push_back(thread(updaterThread, stepSize));
 		}
-		
-		printf("Updating particles using %i threads\n", thread::hardware_concurrency());
 		
 		for (auto &thr : threads) thr.join();
 	}
