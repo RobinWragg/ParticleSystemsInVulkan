@@ -276,7 +276,7 @@ namespace graphics {
 		return 0;
 	}
 
-	void buildVertexBuffer(vector<particles::Particle> particles, VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
+	void buildVertexBuffer(const vector<particles::Particle> &particles, VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
 		
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -712,7 +712,7 @@ namespace graphics {
 		buildSemaphores();
 	}
 
-	void render(vector<particles::Particle> particles) {
+	void render(const vector<particles::Particle> &particles) {
 		VkCommandPool commandPool = buildCommandPool();
 
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
