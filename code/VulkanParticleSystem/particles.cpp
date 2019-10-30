@@ -4,7 +4,6 @@ namespace particles {
 	
 	vector<Particle> particles;
 	vector<vec3> velocities;
-	mutex particleMutex;
 
 	float randf() {
 		static mt19937 randomGenerator(SDL_GetPerformanceCounter());
@@ -56,21 +55,6 @@ namespace particles {
 		*velocity = baseVelocity + velocityRandomness;
 	}
 	
-	int32_t nextParticleIndexToUpdate = 0;
-	
-	int32_t requestParticleIndex() {
-		int32_t index;
-		
-		particleMutex.lock();
-		
-		if (nextParticleIndexToUpdate < particles.size()) index = nextParticleIndexToUpdate++;
-		else index = -1;
-		
-		particleMutex.unlock();
-		
-		return index;
-	}
-	
 	void updateOneParticle(int32_t i, float stepSize) {
 		velocities[i] *= 1 - stepSize * airResistance;
 		velocities[i].y += gravity * stepSize;
@@ -79,12 +63,8 @@ namespace particles {
 		if (particles[i].position.y > groundLevel) respawn(&particles[i], &(velocities[i]));
 	}
 	
-	void updaterThread(float stepSize) {
-		while (true) {
-			int32_t i = requestParticleIndex();
-			
-			if (i < 0) break;
-			
+	void updateRange(int startIndex, int endIndexExclusive, float stepSize) {
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
 			updateOneParticle(i, stepSize);
 		}
 	}
@@ -92,15 +72,19 @@ namespace particles {
 	void update(int particleCount, float deltaTime) {
 		float stepSize = deltaTime * 0.5f;
 		
-		nextParticleIndexToUpdate = 0;
-		
 		vector<thread> threads;
 		
-		for (uint32_t i = 0; i < thread::hardware_concurrency(); i++) {
-			threads.push_back(thread(updaterThread, stepSize));
+		const int threadCount = thread::hardware_concurrency();
+
+		for (int i = 0; i < threadCount; i++) {
+			uint32_t rangeStartIndex = (i * particles.size()) / threadCount;
+			uint32_t rangeEndIndexExclusive = ((i+1) * particles.size()) / threadCount;
+			threads.push_back(thread(updateRange, rangeStartIndex, rangeEndIndexExclusive, stepSize));
 		}
 		
 		for (auto &thr : threads) thr.join();
+
+		//printf("done\n");
 	}
 
 	void render() {
