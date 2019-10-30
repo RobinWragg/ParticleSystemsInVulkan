@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 #include <fstream>
+#include <random>
 #include <windows.h>
 
 #include <SDL.h>
