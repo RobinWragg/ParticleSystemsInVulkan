@@ -8,7 +8,7 @@ namespace particles {
 	float randf() {
 		static bool initialised = false;
 		if (!initialised) {
-			srand((int)getTime() * 10000);
+			srand(SDL_GetPerformanceCounter());
 			initialised = true;
 		}
 
