@@ -7,7 +7,7 @@ namespace particles {
 
 	float randf() {
 		static mt19937 randomGenerator(SDL_GetPerformanceCounter());
-		return (randomGenerator.min() + randomGenerator()) / (float)randomGenerator.max();
+		return (mt19937::min() + randomGenerator()) / (float)mt19937::max();
 	}
 
 	void init(SDL_Window *window) {

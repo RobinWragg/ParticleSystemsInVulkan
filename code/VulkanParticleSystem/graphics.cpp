@@ -771,9 +771,11 @@ namespace graphics {
 	}
 
 	void destroy() {
-		auto destroyDebugUtilsMessenger =
-			(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-		destroyDebugUtilsMessenger(instance, debugMsgr, nullptr);
+		if (!requiredValidationLayers.empty()) {
+			auto destroyDebugUtilsMessenger =
+				(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+			destroyDebugUtilsMessenger(instance, debugMsgr, nullptr);
+		}
 
 		vkDeviceWaitIdle(device);
 
