@@ -42,9 +42,10 @@ namespace particles {
 	const float gravity = 1.0f;
 	const float airResistance = 0.1f;
 	const float groundLevel = 1.0f;
+	vec3 respawnPosition = { -0.8, -0.1, 0.5 };
 
 	void respawn(Particle *particle, vec3 *velocity) {
-		particle->position = { -0.8, -0.1, 0.5 };
+		particle->position = respawnPosition;
 		particle->brightness = randf();
 
 		vec3 baseVelocity = { 0.4, -1, 0 };
@@ -69,19 +70,25 @@ namespace particles {
 		}
 	}
 
+	double t = 0;
+
 	void update(int particleCount, float deltaTime) {
 		float stepSize = deltaTime * 0.5f;
-		
+
+		// Move the respawn position
+		t += deltaTime;
+		respawnPosition.x = -0.8 + sinf(t)*0.1;
+
 		vector<thread> threads;
-		
+
 		const int threadCount = thread::hardware_concurrency();
 
 		for (int i = 0; i < threadCount; i++) {
 			uint32_t rangeStartIndex = (i * particles.size()) / threadCount;
-			uint32_t rangeEndIndexExclusive = ((i+1) * particles.size()) / threadCount;
+			uint32_t rangeEndIndexExclusive = ((i + 1) * particles.size()) / threadCount;
 			threads.push_back(thread(updateRange, rangeStartIndex, rangeEndIndexExclusive, stepSize));
 		}
-		
+
 		for (auto &thr : threads) thr.join();
 
 		//printf("done\n");
