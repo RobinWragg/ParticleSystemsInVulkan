@@ -61,7 +61,7 @@ namespace particles {
 		velocities[i].y += gravity * stepSize;
 		particles[i].position += velocities[i] * stepSize;
 
-		if (particles[i].position.y > groundLevel) respawn(&particles[i], &(velocities[i]));
+		if (particles[i].position.y > groundLevel) respawn(&particles[i], &velocities[i]);
 	}
 	
 	void updateRange(int startIndex, int endIndexExclusive, float stepSize) {
