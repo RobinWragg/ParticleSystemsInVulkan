@@ -11,6 +11,10 @@ namespace graphics {
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
 
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
+
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkExtent2D extent;
 	int queueFamilyIndex = -1;
@@ -504,6 +508,12 @@ namespace graphics {
 		}
 	}
 
+	void setupDepthTesting() {
+		VkFormat format = VK_FORMAT_D32_SFLOAT;
+
+		// TODO: Create an image as depthImage
+	}
+
 	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
 		printAvailableInstanceLayers();
 
@@ -711,6 +721,7 @@ namespace graphics {
 		buildPipeline(bindingDesc, attribDescs);
 		buildFramebuffers();
 		buildSemaphores();
+		setupDepthTesting();
 	}
 
 	void render(const vector<particles::Particle> &particles) {
