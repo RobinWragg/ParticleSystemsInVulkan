@@ -5,7 +5,7 @@ namespace graphics {
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
 	bool enableVsync = false;
-	bool enableDepthTesting = false;
+	bool enableDepthTesting = true;
 
 	vector<const char*> requiredValidationLayers = {
 #ifdef _DEBUG
@@ -475,26 +475,16 @@ namespace graphics {
 		SDL_assert_release(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderCompletedSemaphore) == VK_SUCCESS);
 	}
 
-	VkCommandPool buildCommandPool() {
-		VkCommandPool commandPool = VK_NULL_HANDLE;
-
+	VkCommandPool buildCommandPool(VkDevice device, int queueFamilyIndex) {
 		VkCommandPoolCreateInfo poolInfo = {};
+
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.queueFamilyIndex = queueFamilyIndex;
-		poolInfo.flags = 0; // TODO: optimisation possible?
-		auto result = vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool);
-		SDL_assert(result == VK_SUCCESS);
+		poolInfo.flags = 0;
+		poolInfo.pNext = nullptr;
 
-		vector<VkCommandBuffer> commandBuffers(framebuffers.size());
-
-		VkCommandBufferAllocateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		bufferInfo.commandPool = commandPool;
-		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: optimise by reusing commands (secondary buffer level)?
-		bufferInfo.commandBufferCount = (int)commandBuffers.size();
-		result = vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers.data());
-		SDL_assert(result == VK_SUCCESS);
-		
+		VkCommandPool commandPool = VK_NULL_HANDLE;
+		SDL_assert(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) == VK_SUCCESS);
 		return commandPool;
 	}
 
@@ -557,7 +547,7 @@ namespace graphics {
 		}
 	}
 	
-	VkCommandBuffer buildAndBeginDepthTestingCommandBuffer() {
+	VkCommandBuffer buildAndBeginDepthTestingCommandBuffer(VkCommandPool commandPool) {
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -576,7 +566,7 @@ namespace graphics {
 		return commandBuffer;
 	}
 
-	void endDepthTestingCommandBuffer(VkCommandBuffer buffer) {
+	void endDepthTestingCommandBuffer(VkCommandBuffer buffer, VkCommandPool commandPool) {
 		vkEndCommandBuffer(buffer);
 
 		VkSubmitInfo submitInfo = {};
@@ -590,7 +580,7 @@ namespace graphics {
 		vkFreeCommandBuffers(device, commandPool, 1, &buffer);
 	}
 
-	void setupDepthTesting() {
+	void setupDepthTesting(VkCommandPool commandPool) {
 		VkFormat format = VK_FORMAT_D32_SFLOAT;
 
 		// Make depth image
@@ -638,7 +628,7 @@ namespace graphics {
 		SDL_assert_release(vkCreateImageView(device, &viewInfo, nullptr, &depthImageView) == VK_SUCCESS);
 
 		// Initialise image layout
-		VkCommandBuffer commandBuffer = buildAndBeginDepthTestingCommandBuffer();
+		VkCommandBuffer commandBuffer = buildAndBeginDepthTestingCommandBuffer(commandPool);
 
 		VkImageMemoryBarrier barrier = {};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -660,7 +650,7 @@ namespace graphics {
 
 		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-		endDepthTestingCommandBuffer(commandBuffer);
+		endDepthTestingCommandBuffer(commandBuffer, commandPool);
 	}
 
 	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
@@ -868,10 +858,10 @@ namespace graphics {
 
 		buildRenderPass();
 		buildPipeline(bindingDesc, attribDescs);
-		if (enableDepthTesting) setupDepthTesting();
+		commandPool = buildCommandPool(device, queueFamilyIndex);
+		if (enableDepthTesting) setupDepthTesting(commandPool);
 		buildFramebuffers();
 		buildSemaphores();
-		commandPool = buildCommandPool();
 	}
 
 	void render(const vector<particles::Particle> &particles) {
