@@ -444,7 +444,7 @@ namespace graphics {
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = attachments.size();
+			framebufferInfo.attachmentCount = (uint32_t)attachments.size();
 			framebufferInfo.pAttachments = attachments.data();
 			framebufferInfo.width = extent.width;
 			framebufferInfo.height = extent.height;
@@ -522,7 +522,7 @@ namespace graphics {
 				clearValues.back().depthStencil = { 1, 0 };
 			}
 
-			renderPassInfo.clearValueCount = clearValues.size();
+			renderPassInfo.clearValueCount = (uint32_t)clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
 			renderPassInfo.renderArea.offset = { 0, 0 };
