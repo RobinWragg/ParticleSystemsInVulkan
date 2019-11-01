@@ -5,6 +5,7 @@ namespace graphics {
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
 	bool enableVsync = false;
+	bool enableDepthTesting = false;
 
 	vector<const char*> requiredValidationLayers = {
 		"VK_LAYER_LUNARG_standard_validation"
