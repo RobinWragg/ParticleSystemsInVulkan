@@ -376,7 +376,6 @@ namespace graphics {
 		rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterInfo.depthBiasEnable = VK_FALSE;
 
-		// TODO: implement basic antialiasing
 		VkPipelineMultisampleStateCreateInfo multisamplingInfo = {};
 		multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		multisamplingInfo.sampleShadingEnable = VK_FALSE;
@@ -413,6 +412,18 @@ namespace graphics {
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportInfo;
+
+		if (enableDepthTesting) {
+			VkPipelineDepthStencilStateCreateInfo depthStencilInfo = {};
+			depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencilInfo.depthTestEnable = VK_TRUE;
+			depthStencilInfo.depthWriteEnable = VK_TRUE;
+			depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS; // Lower depth values mean closer to 'camera'
+			depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+			depthStencilInfo.stencilTestEnable = VK_FALSE;
+			pipelineInfo.pDepthStencilState = &depthStencilInfo;
+		}
+
 		pipelineInfo.pRasterizationState = &rasterInfo;
 		pipelineInfo.pMultisampleState = &multisamplingInfo;
 		pipelineInfo.pColorBlendState = &colorBlending;
@@ -428,15 +439,13 @@ namespace graphics {
 		framebuffers.resize(swapchainViews.size());
 
 		for (int i = 0; i < swapchainViews.size(); i++) {
-			VkImageView attachments[] = {
-				swapchainViews[i]
-			};
+			vector<VkImageView> attachments = { swapchainViews[i] };
 
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.attachmentCount = attachments.size();
+			framebufferInfo.pAttachments = attachments.data();
 			framebufferInfo.width = extent.width;
 			framebufferInfo.height = extent.height;
 			framebufferInfo.layers = 1;
