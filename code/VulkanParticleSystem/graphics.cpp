@@ -507,9 +507,22 @@ namespace graphics {
 			renderPassInfo.renderPass = renderPass;
 			renderPassInfo.framebuffer = framebuffers[i];
 
-			VkClearValue clearColor = { 0, 0, 0, 1 };
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
+			vector<VkClearValue> clearValues;
+
+			// Color clear value
+			clearValues.push_back(VkClearValue());
+			clearValues.back().color = { 0, 0, 0, 1 };
+			clearValues.back().depthStencil = {};
+
+			if (enableDepthTesting) {
+				// Depth/stencil clear value
+				clearValues.push_back(VkClearValue());
+				clearValues.back().color = {};
+				clearValues.back().depthStencil = { 1, 0 };
+			}
+
+			renderPassInfo.clearValueCount = clearValues.size();
+			renderPassInfo.pClearValues = clearValues.data();
 
 			renderPassInfo.renderArea.offset = { 0, 0 };
 			renderPassInfo.renderArea.extent = extent;
