@@ -5,8 +5,11 @@ namespace graphics {
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
 	bool vsync = false;
+	bool enableDepthTesting = false;
 
-	vector<const char*> requiredValidationLayers = { };
+	vector<const char*> requiredValidationLayers = {
+		"VK_LAYER_LUNARG_standard_validation"
+	};
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
@@ -14,6 +17,8 @@ namespace graphics {
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
+
+	VkCommandPool commandPool;
 
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkExtent2D extent;
@@ -223,6 +228,21 @@ namespace graphics {
 		return stageInfo;
 	}
 
+	VkAttachmentDescription buildAttachmentDescription(VkFormat format, VkAttachmentStoreOp storeOp, VkImageLayout finalLayout) {
+		VkAttachmentDescription attachment = {};
+
+		attachment.format = format;
+		attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachment.storeOp = storeOp;
+		attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		attachment.finalLayout = finalLayout;
+
+		return attachment;
+	}
+
 	void buildRenderPass() {
 
 		VkSubpassDependency dependency = {};
@@ -235,18 +255,11 @@ namespace graphics {
 		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-		VkAttachmentDescription colorAttachment = {};
-		colorAttachment.format = requiredSwapchainFormat;
-		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		vector<VkAttachmentDescription> attachments = {};
 
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		VkAttachmentDescription colorAttachment = buildAttachmentDescription(
+			requiredSwapchainFormat, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		attachments.push_back(colorAttachment);
 
 		VkAttachmentReference colorAttachmentRef = {};
 		colorAttachmentRef.attachment = 0;
