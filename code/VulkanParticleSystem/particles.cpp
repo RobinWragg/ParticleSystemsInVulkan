@@ -30,7 +30,7 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(100000);
+		particles.resize(1000000);
 
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
@@ -42,15 +42,15 @@ namespace particles {
 	const float gravity = 1.0f;
 	const float airResistance = 0.1f;
 	const float groundLevel = 1.0f;
-	vec3 respawnPosition = { -0.8, -0.1, 1 };
+	vec3 respawnPosition = { -0.8, -0.1, 0.95 };
 
 	void respawn(Particle *particle, vec3 *velocity) {
 		particle->position = respawnPosition;
 		particle->brightness = randf();
 
-		vec3 baseVelocity = { 0.4, -1, -0.5 };
+		vec3 baseVelocity = { 0.4, -1, -0.1 };
 		const float velocityRandomnessAmount = 0.3f;
-		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, (randf()-0.5)*0.5 };
+		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, randf()-0.5 };
 		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.95f+0.05f);
 
 		*velocity = baseVelocity + velocityRandomness;
