@@ -484,7 +484,7 @@ namespace graphics {
 		poolInfo.pNext = nullptr;
 
 		VkCommandPool commandPool = VK_NULL_HANDLE;
-		SDL_assert(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) == VK_SUCCESS);
+		SDL_assert_release(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) == VK_SUCCESS);
 		return commandPool;
 	}
 
@@ -548,6 +548,8 @@ namespace graphics {
 	}
 	
 	VkCommandBuffer buildAndBeginDepthTestingCommandBuffer(VkCommandPool commandPool) {
+		SDL_assert_release(commandPool != VK_NULL_HANDLE);
+
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -581,6 +583,8 @@ namespace graphics {
 	}
 
 	void setupDepthTesting(VkCommandPool commandPool) {
+		SDL_assert_release(commandPool != VK_NULL_HANDLE);
+
 		VkFormat format = VK_FORMAT_D32_SFLOAT;
 
 		// Make depth image
