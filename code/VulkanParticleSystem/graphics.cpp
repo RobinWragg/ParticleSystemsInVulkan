@@ -143,7 +143,7 @@ namespace graphics {
 		info.queueFamilyIndex = selectedIndex;
 		info.queueCount = 1;
 
-		// I'm allocating without freeing them here which is super bad practice,
+		// I'm allocating without freeing here which is super bad practice,
 		// but it's only 4 bytes for the entire life of the program.
 		float *priorities = new float[1];
 		priorities[0] = 1.0f;
