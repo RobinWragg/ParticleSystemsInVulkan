@@ -21,7 +21,6 @@ mono_crash.*
 
 # Build results
 bld/
-[Bb]in/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/

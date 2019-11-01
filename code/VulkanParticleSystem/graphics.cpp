@@ -4,10 +4,23 @@ namespace graphics {
 	const auto requiredSwapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
-	bool vsync = false;
+	bool enableVsync = false;
+	bool enableDepthTesting = true;
+
+	vector<const char*> requiredValidationLayers = {
+#ifdef _DEBUG
+		"VK_LAYER_LUNARG_standard_validation"
+#endif
+	};
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderCompletedSemaphore;
+
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
+
+	VkCommandPool commandPool;
 
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkExtent2D extent;
@@ -130,7 +143,7 @@ namespace graphics {
 		info.queueFamilyIndex = selectedIndex;
 		info.queueCount = 1;
 
-		// I'm allocating without freeing them here which is super bad practice,
+		// I'm allocating without freeing here which is super bad practice,
 		// but it's only 4 bytes for the entire life of the program.
 		float *priorities = new float[1];
 		priorities[0] = 1.0f;
@@ -217,6 +230,21 @@ namespace graphics {
 		return stageInfo;
 	}
 
+	VkAttachmentDescription buildAttachmentDescription(VkFormat format, VkAttachmentStoreOp storeOp, VkImageLayout finalLayout) {
+		VkAttachmentDescription attachment = {};
+
+		attachment.format = format;
+		attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachment.storeOp = storeOp;
+		attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		attachment.finalLayout = finalLayout;
+
+		return attachment;
+	}
+
 	void buildRenderPass() {
 
 		VkSubpassDependency dependency = {};
@@ -229,18 +257,11 @@ namespace graphics {
 		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-		VkAttachmentDescription colorAttachment = {};
-		colorAttachment.format = requiredSwapchainFormat;
-		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		vector<VkAttachmentDescription> attachments = {};
 
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		VkAttachmentDescription colorAttachment = buildAttachmentDescription(
+			requiredSwapchainFormat, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		attachments.push_back(colorAttachment);
 
 		VkAttachmentReference colorAttachmentRef = {};
 		colorAttachmentRef.attachment = 0;
@@ -251,14 +272,25 @@ namespace graphics {
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colorAttachmentRef;
 
+		if (enableDepthTesting) {
+			VkAttachmentDescription depthAttachment = buildAttachmentDescription(
+				VK_FORMAT_D32_SFLOAT, VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			attachments.push_back(depthAttachment);
+
+			VkAttachmentReference depthAttachmentRef = {};
+			depthAttachmentRef.attachment = 1;
+			depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			subpass.pDepthStencilAttachment = &depthAttachmentRef;
+		}
+
 		VkRenderPassCreateInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = 1;
-		renderPassInfo.pAttachments = &colorAttachment;
+
+		renderPassInfo.attachmentCount = (uint32_t)attachments.size();
+		renderPassInfo.pAttachments = attachments.data();
+		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.subpassCount = 1;
 		renderPassInfo.pSubpasses = &subpass;
-
-		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
 
 		SDL_assert_release(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS);
@@ -357,7 +389,6 @@ namespace graphics {
 		rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterInfo.depthBiasEnable = VK_FALSE;
 
-		// TODO: implement basic antialiasing
 		VkPipelineMultisampleStateCreateInfo multisamplingInfo = {};
 		multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		multisamplingInfo.sampleShadingEnable = VK_FALSE;
@@ -394,6 +425,18 @@ namespace graphics {
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportInfo;
+
+		if (enableDepthTesting) {
+			VkPipelineDepthStencilStateCreateInfo depthStencilInfo = {};
+			depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencilInfo.depthTestEnable = VK_TRUE;
+			depthStencilInfo.depthWriteEnable = VK_TRUE;
+			depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS; // Lower depth values mean closer to 'camera'
+			depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+			depthStencilInfo.stencilTestEnable = VK_FALSE;
+			pipelineInfo.pDepthStencilState = &depthStencilInfo;
+		}
+
 		pipelineInfo.pRasterizationState = &rasterInfo;
 		pipelineInfo.pMultisampleState = &multisamplingInfo;
 		pipelineInfo.pColorBlendState = &colorBlending;
@@ -409,15 +452,14 @@ namespace graphics {
 		framebuffers.resize(swapchainViews.size());
 
 		for (int i = 0; i < swapchainViews.size(); i++) {
-			VkImageView attachments[] = {
-				swapchainViews[i]
-			};
+			vector<VkImageView> attachments = { swapchainViews[i] };
+			if (enableDepthTesting) attachments.push_back(depthImageView);
 
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.attachmentCount = (uint32_t)attachments.size();
+			framebufferInfo.pAttachments = attachments.data();
 			framebufferInfo.width = extent.width;
 			framebufferInfo.height = extent.height;
 			framebufferInfo.layers = 1;
@@ -433,26 +475,16 @@ namespace graphics {
 		SDL_assert_release(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderCompletedSemaphore) == VK_SUCCESS);
 	}
 
-	VkCommandPool buildCommandPool() {
-		VkCommandPool commandPool = VK_NULL_HANDLE;
-
+	VkCommandPool buildCommandPool(VkDevice device, int queueFamilyIndex) {
 		VkCommandPoolCreateInfo poolInfo = {};
+
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.queueFamilyIndex = queueFamilyIndex;
-		poolInfo.flags = 0; // TODO: optimisation possible?
-		auto result = vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool);
-		SDL_assert(result == VK_SUCCESS);
+		poolInfo.flags = 0;
+		poolInfo.pNext = nullptr;
 
-		vector<VkCommandBuffer> commandBuffers(framebuffers.size());
-
-		VkCommandBufferAllocateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		bufferInfo.commandPool = commandPool;
-		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: optimise by reusing commands (secondary buffer level)?
-		bufferInfo.commandBufferCount = (int)commandBuffers.size();
-		result = vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers.data());
-		SDL_assert(result == VK_SUCCESS);
-		
+		VkCommandPool commandPool = VK_NULL_HANDLE;
+		SDL_assert_release(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) == VK_SUCCESS);
 		return commandPool;
 	}
 
@@ -480,9 +512,22 @@ namespace graphics {
 			renderPassInfo.renderPass = renderPass;
 			renderPassInfo.framebuffer = framebuffers[i];
 
-			VkClearValue clearColor = { 0, 0, 0, 1 };
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
+			vector<VkClearValue> clearValues;
+
+			// Color clear value
+			clearValues.push_back(VkClearValue());
+			clearValues.back().color = { 0, 0, 0, 1 };
+			clearValues.back().depthStencil = {};
+
+			if (enableDepthTesting) {
+				// Depth/stencil clear value
+				clearValues.push_back(VkClearValue());
+				clearValues.back().color = {};
+				clearValues.back().depthStencil = { 1, 0 };
+			}
+
+			renderPassInfo.clearValueCount = (uint32_t)clearValues.size();
+			renderPassInfo.pClearValues = clearValues.data();
 
 			renderPassInfo.renderArea.offset = { 0, 0 };
 			renderPassInfo.renderArea.extent = extent;
@@ -501,11 +546,120 @@ namespace graphics {
 			SDL_assert(result == VK_SUCCESS);
 		}
 	}
+	
+	VkCommandBuffer buildAndBeginDepthTestingCommandBuffer(VkCommandPool commandPool) {
+		SDL_assert_release(commandPool != VK_NULL_HANDLE);
+
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = commandPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer;
+		vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		return commandBuffer;
+	}
+
+	void endDepthTestingCommandBuffer(VkCommandBuffer buffer, VkCommandPool commandPool) {
+		vkEndCommandBuffer(buffer);
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &buffer;
+
+		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(queue);
+
+		vkFreeCommandBuffers(device, commandPool, 1, &buffer);
+	}
+
+	void setupDepthTesting(VkCommandPool commandPool) {
+		SDL_assert_release(commandPool != VK_NULL_HANDLE);
+
+		VkFormat format = VK_FORMAT_D32_SFLOAT;
+
+		// Make depth image
+		VkImageCreateInfo imageInfo = {};
+		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageInfo.extent.width = extent.width;
+		imageInfo.extent.height = extent.height;
+		imageInfo.extent.depth = 1;
+		imageInfo.mipLevels = 1;
+		imageInfo.arrayLayers = 1;
+		imageInfo.format = format;
+		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		SDL_assert_release(vkCreateImage(device, &imageInfo, nullptr, &depthImage) == VK_SUCCESS);
+
+		VkMemoryRequirements memoryReqs;
+		vkGetImageMemoryRequirements(device, depthImage, &memoryReqs);
+
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memoryReqs.size;
+		allocInfo.memoryTypeIndex = findMemoryType(memoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		SDL_assert_release(vkAllocateMemory(device, &allocInfo, nullptr, &depthImageMemory) == VK_SUCCESS);
+
+		vkBindImageMemory(device, depthImage, depthImageMemory, 0);
+
+		// Make image view
+		VkImageViewCreateInfo viewInfo = {};
+		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewInfo.image = depthImage;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.format = format;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = 1;
+
+		SDL_assert_release(vkCreateImageView(device, &viewInfo, nullptr, &depthImageView) == VK_SUCCESS);
+
+		// Initialise image layout
+		VkCommandBuffer commandBuffer = buildAndBeginDepthTestingCommandBuffer(commandPool);
+
+		VkImageMemoryBarrier barrier = {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = depthImage;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		VkPipelineStageFlags sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
+		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+		endDepthTestingCommandBuffer(commandBuffer, commandPool);
+	}
 
 	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
 		printAvailableInstanceLayers();
 
-		vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
 		vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
 
@@ -665,7 +819,7 @@ namespace graphics {
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // the graphics and surface queues are the same, so no sharing is necessary.
 			createInfo.preTransform = capabilities.currentTransform;
 			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Opaque window
-			createInfo.presentMode = vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
+			createInfo.presentMode = enableVsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
 			createInfo.clipped = VK_FALSE; // Vulkan will always render all the pixels, even if some are osbscured by other windows.
 			createInfo.oldSwapchain = VK_NULL_HANDLE; // I will not support swapchain recreation.
 
@@ -708,13 +862,14 @@ namespace graphics {
 
 		buildRenderPass();
 		buildPipeline(bindingDesc, attribDescs);
+		commandPool = buildCommandPool(device, queueFamilyIndex);
+		if (enableDepthTesting) setupDepthTesting(commandPool);
 		buildFramebuffers();
 		buildSemaphores();
 	}
 
 	void render(const vector<particles::Particle> &particles) {
-		VkCommandPool commandPool = buildCommandPool();
-
+		
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
 		buildVertexBuffer(particles, &vertexBuffer, &vertexBufferMemory);
@@ -767,13 +922,16 @@ namespace graphics {
 
 		vkDestroyBuffer(device, vertexBuffer, nullptr);
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
-		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 
 	void destroy() {
-		auto destroyDebugUtilsMessenger =
-			(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-		destroyDebugUtilsMessenger(instance, debugMsgr, nullptr);
+		vkDestroyCommandPool(device, commandPool, nullptr);
+
+		if (!requiredValidationLayers.empty()) {
+			auto destroyDebugUtilsMessenger =
+				(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+			destroyDebugUtilsMessenger(instance, debugMsgr, nullptr);
+		}
 
 		vkDeviceWaitIdle(device);
 

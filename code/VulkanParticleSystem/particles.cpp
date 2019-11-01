@@ -6,8 +6,8 @@ namespace particles {
 	vector<vec3> velocities;
 
 	float randf() {
-		static mt19937 randomGenerator(SDL_GetPerformanceCounter());
-		return (randomGenerator.min() + randomGenerator()) / (float)randomGenerator.max();
+		static mt19937 randomGenerator((unsigned int)SDL_GetPerformanceCounter());
+		return (mt19937::min() + randomGenerator()) / (float)mt19937::max();
 	}
 
 	void init(SDL_Window *window) {
@@ -30,7 +30,7 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(100000);
+		particles.resize(1000000);
 
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
@@ -42,14 +42,15 @@ namespace particles {
 	const float gravity = 1.0f;
 	const float airResistance = 0.1f;
 	const float groundLevel = 1.0f;
+	vec3 respawnPosition = { -0.8, -0.1, 0.95 };
 
 	void respawn(Particle *particle, vec3 *velocity) {
-		particle->position = { -0.8, -0.1, 0.5 };
+		particle->position = respawnPosition;
 		particle->brightness = randf();
 
-		vec3 baseVelocity = { 0.4, -1, 0 };
+		vec3 baseVelocity = { 0.4, -1, -0.1 };
 		const float velocityRandomnessAmount = 0.3f;
-		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, (randf()-0.5f)*0.5 };
+		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, randf()-0.5 };
 		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.95f+0.05f);
 
 		*velocity = baseVelocity + velocityRandomness;
@@ -60,28 +61,34 @@ namespace particles {
 		velocities[i].y += gravity * stepSize;
 		particles[i].position += velocities[i] * stepSize;
 
-		if (particles[i].position.y > groundLevel) respawn(&particles[i], &(velocities[i]));
+		if (particles[i].position.y > groundLevel) respawn(&particles[i], &velocities[i]);
 	}
 	
-	void updateRange(int startIndex, int endIndexExclusive, float stepSize) {
+	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive, float stepSize) {
 		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
 			updateOneParticle(i, stepSize);
 		}
 	}
 
+	double t = 0;
+
 	void update(int particleCount, float deltaTime) {
 		float stepSize = deltaTime * 0.5f;
-		
-		vector<thread> threads;
-		
-		const int threadCount = thread::hardware_concurrency();
 
-		for (int i = 0; i < threadCount; i++) {
-			uint32_t rangeStartIndex = (i * particles.size()) / threadCount;
-			uint32_t rangeEndIndexExclusive = ((i+1) * particles.size()) / threadCount;
+		// Move the respawn position
+		t += deltaTime;
+		respawnPosition.x = -0.8f + sinf((float)t)*0.1f;
+
+		vector<thread> threads;
+
+		const uint32_t threadCount = thread::hardware_concurrency();
+
+		for (uint32_t i = 0; i < threadCount; i++) {
+			uint32_t rangeStartIndex = (i * (uint32_t)particles.size()) / threadCount;
+			uint32_t rangeEndIndexExclusive = ((i + 1) * (uint32_t)particles.size()) / threadCount;
 			threads.push_back(thread(updateRange, rangeStartIndex, rangeEndIndexExclusive, stepSize));
 		}
-		
+
 		for (auto &thr : threads) thr.join();
 
 		//printf("done\n");
