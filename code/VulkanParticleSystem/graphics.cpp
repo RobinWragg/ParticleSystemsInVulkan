@@ -270,14 +270,25 @@ namespace graphics {
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colorAttachmentRef;
 
+		if (enableDepthTesting) {
+			VkAttachmentDescription depthAttachment = buildAttachmentDescription(
+				VK_FORMAT_D32_SFLOAT, VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			attachments.push_back(depthAttachment);
+
+			VkAttachmentReference depthAttachmentRef = {};
+			depthAttachmentRef.attachment = 1;
+			depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			subpass.pDepthStencilAttachment = &depthAttachmentRef;
+		}
+
 		VkRenderPassCreateInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = 1;
-		renderPassInfo.pAttachments = &colorAttachment;
+
+		renderPassInfo.attachmentCount = (uint32_t)attachments.size();
+		renderPassInfo.pAttachments = attachments.data();
+		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.subpassCount = 1;
 		renderPassInfo.pSubpasses = &subpass;
-
-		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
 
 		SDL_assert_release(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS);
@@ -440,6 +451,7 @@ namespace graphics {
 
 		for (int i = 0; i < swapchainViews.size(); i++) {
 			vector<VkImageView> attachments = { swapchainViews[i] };
+			if (enableDepthTesting) attachments.push_back(depthImageView);
 
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -522,7 +534,7 @@ namespace graphics {
 				clearValues.back().depthStencil = { 1, 0 };
 			}
 
-			renderPassInfo.clearValueCount = (uint32_t)clearValues.size();
+			renderPassInfo.clearValueCount = clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
 			renderPassInfo.renderArea.offset = { 0, 0 };
@@ -854,6 +866,7 @@ namespace graphics {
 
 		buildRenderPass();
 		buildPipeline(bindingDesc, attribDescs);
+		if (enableDepthTesting) setupDepthTesting();
 		buildFramebuffers();
 		buildSemaphores();
 		commandPool = buildCommandPool();
