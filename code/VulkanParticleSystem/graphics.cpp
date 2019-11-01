@@ -844,11 +844,11 @@ namespace graphics {
 		buildFramebuffers();
 		buildSemaphores();
 		setupDepthTesting();
+		commandPool = buildCommandPool();
 	}
 
 	void render(const vector<particles::Particle> &particles) {
-		VkCommandPool commandPool = buildCommandPool();
-
+		
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
 		buildVertexBuffer(particles, &vertexBuffer, &vertexBufferMemory);
@@ -901,10 +901,11 @@ namespace graphics {
 
 		vkDestroyBuffer(device, vertexBuffer, nullptr);
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
-		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 
 	void destroy() {
+		vkDestroyCommandPool(device, commandPool, nullptr);
+
 		if (!requiredValidationLayers.empty()) {
 			auto destroyDebugUtilsMessenger =
 				(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
