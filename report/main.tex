@@ -6,6 +6,7 @@
 
 % TODO: research at http://vulkan.gpuinfo.org/
 % TODO: gantt chart: https://www.excel-easy.com/examples/gantt-chart.html
+% https://www.youtube.com/watch?v=rHIkrotSwcc
 
 \documentclass[11pt, a4paper, twocolumn]{article}
 \usepackage[T1]{fontenc}
@@ -46,23 +47,29 @@
 
 \section{Introduction}
 
-The aim of this project is to research and experiment with techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines. Techniques are collected from related literature and are applied to our own program, a particle system built in C++ and Vulkan. From this experience, and independent experimentation, we will collect and document the most appropriate techniques for easy consumption by those who may be considering implementing or improving their own particle system and/or Vulkan pipeline.
+The aim of this project is to research and experiment with techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines. Techniques are collected from related literature and are applied to our own program, a particle system built in C++ and Vulkan. From this experience and independent experimentation, we will collect and document the most appropriate techniques for easy consumption by those who may be considering implementing or improving their own particle system and/or Vulkan pipeline.
 
-Multiprocessors will briefly be explored in the literature review, but this paper will be focussing on consumer-oriented systems with a single, multi-core CPU and a single GPU throughout this paper.
+Multiprocessors and offline rendering will be briefly explored, but this paper will be focussing on real-time applications running on consumer-oriented systems with a single, multi-core CPU and a single GPU throughout this paper.
 
 \subsection{Particle Systems}
 
-Various ephemeral phenomena such as fire, rain, explosions and smoke can be challenging to render convincingly and efficiently using the mesh-of-triangles approach that is used for solid objects.
+Various ephemeral phenomena such as fire, rain, explosions and smoke can be challenging to render convincingly and efficiently using the mesh-of-triangles approach that is used for solid objects. This is because creating an accurate simulation of these phenomena is impossible to do in real-time as it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems.
 
-Creating an accurate simulation of these phenomena is impossible to do in real-time, because it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems. The technique involves rendering many \emph{particles} per frame; the number of particles is dependant on the intended realism/quality and the required rendering speed. Particle systems are more versatile than just a way to simulate realistic visual effects; they often used to render unrealistic phenomena, such as magical effects.
+The technique involves rendering many \emph{particles} per frame; the number of particles is dependent on the intended realism/quality and the required rendering speed. Particle systems are more versatile than just a way to simulate realistic visual effects; they are often used to render unrealistic phenomena, such as magical effects.
 
-A particle can be any simple, renderable object; \emph{billboards} (flat, textured polygons that always face the camera) are perhaps the most common kind of particle, and can represent an individual droplet of rain or a section of a cloud. But a particle can be anything the framerate allows; full-blown meshes can be used, if the amount and complexity are low enough for real-time rendering.
+A particle can be any simple, renderable object; \emph{billboards} (flat, textured polygons that always face the camera) are perhaps the most common kind of particle, and can represent an individual droplet of rain or a section of a cloud. But a particle can be anything the framerate allows; full-blown meshes can be used, if the amount and complexity are low enough for real-time rendering, which is turn dependent on the efficiency of the program and the computer hardware.
 
-Particle systems are a useful environment for experimenting with performance because the faster the particles render, the more particles are able to rendered without a noticeable drop in framerate, allowing improved visual results. This quantitative nature makes them appropriate for quantifying the performance impact of any changes made to the program.
+Particle systems are a useful environment for experimenting with performance because the faster the particles render, the more particles are able to rendered without a noticeable drop in framerate, enabling greater freedom for the artists on the project in addition to gradually improving the visual results overall, as the number of particles approaches the aforementioned trillions of molecules that most particles systems are aiming to simulate. This quantitative nature makes them appropriate for quantifying the performance impact of any changes made to the program.
+
+\subsection{Offline Rendering}
+
+A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity isn't required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but an film company can often afford to take hours to render each frame. However, faster rendering is still beneficial; it is cost effective for film companies to invest in \emph{render farms}, clusters of networked computers configured specifically for fast rendering, in order to gain the ability to render more complex scenes and produce films more rapidly.
 
 \subsection{Real-time Graphics Pipelines}
 
+(framerates, 24fps, 30fps, 60fps, 90+fps and why)
 (todo)
+(different coordinate spaces)
 
 \subsection{The Vulkan API}
 
