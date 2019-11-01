@@ -5,9 +5,12 @@ namespace graphics {
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
 	bool enableVsync = false;
+	bool enableDepthTesting = false;
 
 	vector<const char*> requiredValidationLayers = {
+#ifdef _DEBUG
 		"VK_LAYER_LUNARG_standard_validation"
+#endif
 	};
 
 	VkSemaphore imageAvailableSemaphore;
@@ -443,7 +446,7 @@ namespace graphics {
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = attachments.size();
+			framebufferInfo.attachmentCount = (uint32_t)attachments.size();
 			framebufferInfo.pAttachments = attachments.data();
 			framebufferInfo.width = extent.width;
 			framebufferInfo.height = extent.height;
