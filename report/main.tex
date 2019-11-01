@@ -161,7 +161,7 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 % (Describe in detail all the optimisation techniques I implemented and the changes in the performance characteristics of the program as I make changes to the code. Describe the critical thought processes along the way. Describe the complexity and other difficulties of implementing each optimisation. Towards the end of this section, focus on analysis including comparisons of related optimisations performed. Include charts showing how performance scales with the amount of particles. Include diagrams showing data pipelines.)
 
-% "At this point" depth testing was implemented. This highlighted that the existing code for updating particles was based on the assumption that particles should move closer to the screen by increasing their position.z variable. However, a convention in depth testing of "lower values mean closer to the screen, and therefore less depth" is more intuitive, so changes were made to the particle system and the vertex shader to flip the usage of the Z axis to fix this.
+% "At this point" depth testing was implemented. This highlighted that the existing code for updating particles was based on the assumption that particles should move closer to the screen by increasing their position.z variable. However, a convention in depth testing of "lower values mean closer to the screen, and therefore less depth" is more intuitive, so changes were made to the particle system and the vertex shader to flip the usage of the Z axis. Implementing depth-testing and flipping the Z axis did not result in a noticeable change in performance.
 
 \section{Conclusion}
 
