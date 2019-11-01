@@ -6,7 +6,7 @@ namespace particles {
 	vector<vec3> velocities;
 
 	float randf() {
-		static mt19937 randomGenerator(SDL_GetPerformanceCounter());
+		static mt19937 randomGenerator((unsigned int)SDL_GetPerformanceCounter());
 		return (mt19937::min() + randomGenerator()) / (float)mt19937::max();
 	}
 
@@ -42,15 +42,15 @@ namespace particles {
 	const float gravity = 1.0f;
 	const float airResistance = 0.1f;
 	const float groundLevel = 1.0f;
-	vec3 respawnPosition = { -0.8, -0.1, 0.3 };
+	vec3 respawnPosition = { -0.8, -0.1, 1 };
 
 	void respawn(Particle *particle, vec3 *velocity) {
 		particle->position = respawnPosition;
 		particle->brightness = randf();
 
-		vec3 baseVelocity = { 0.4, -1, 0.05 };
+		vec3 baseVelocity = { 0.4, -1, -0.5 };
 		const float velocityRandomnessAmount = 0.3f;
-		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, randf()*0.5 };
+		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, (randf()-0.5)*0.5 };
 		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.95f+0.05f);
 
 		*velocity = baseVelocity + velocityRandomness;
@@ -64,7 +64,7 @@ namespace particles {
 		if (particles[i].position.y > groundLevel) respawn(&particles[i], &velocities[i]);
 	}
 	
-	void updateRange(int startIndex, int endIndexExclusive, float stepSize) {
+	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive, float stepSize) {
 		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
 			updateOneParticle(i, stepSize);
 		}
@@ -77,15 +77,15 @@ namespace particles {
 
 		// Move the respawn position
 		t += deltaTime;
-		respawnPosition.x = -0.8 + sinf(t)*0.1;
+		respawnPosition.x = -0.8f + sinf((float)t)*0.1f;
 
 		vector<thread> threads;
 
-		const int threadCount = thread::hardware_concurrency();
+		const uint32_t threadCount = thread::hardware_concurrency();
 
-		for (int i = 0; i < threadCount; i++) {
-			uint32_t rangeStartIndex = (i * particles.size()) / threadCount;
-			uint32_t rangeEndIndexExclusive = ((i + 1) * particles.size()) / threadCount;
+		for (uint32_t i = 0; i < threadCount; i++) {
+			uint32_t rangeStartIndex = (i * (uint32_t)particles.size()) / threadCount;
+			uint32_t rangeEndIndexExclusive = ((i + 1) * (uint32_t)particles.size()) / threadCount;
 			threads.push_back(thread(updateRange, rangeStartIndex, rangeEndIndexExclusive, stepSize));
 		}
 
