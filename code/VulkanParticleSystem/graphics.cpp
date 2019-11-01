@@ -534,7 +534,7 @@ namespace graphics {
 				clearValues.back().depthStencil = { 1, 0 };
 			}
 
-			renderPassInfo.clearValueCount = clearValues.size();
+			renderPassInfo.clearValueCount = (uint32_t)clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
 			renderPassInfo.renderArea.offset = { 0, 0 };
