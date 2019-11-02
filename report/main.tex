@@ -74,11 +74,12 @@ Creating an accurate simulation of these phenomena is impossible to do in real-t
 
 A particle can be any simple, renderable object; \emph{billboards} (flat, textured polygons that always face the camera) are perhaps the most common kind of particle, and can represent an individual droplet of rain or a section of a cloud. But a particle can be anything the framerate allows; even traditional meshes can be used, if the amount and complexity are low enough for real-time rendering.
 
-Particle systems are a useful environment for experimenting with performance because the faster the particles render, the more particles are able to rendered without a noticeable drop in framerate. This enables greater freedom for the artists on the project in addition to often improving visual quality in itself, as an increase in the number of particles will bring the total count slightly closer to the aforementioned trillions of molecules that most particle systems are aiming to simulate. Particle systems were chosen for this optimisation-based project because their quantitative nature makes them appropriate for quantifying the performance impact of any changes made to the program, and any successful optimisations will permit an improved framerate and particle count for this particle system demonstration.
+Particle systems are a useful environment for experimenting with performance because the faster the particles render, the more particles and other objects are able to be rendered without a noticeable drop in framerate. This primarily gives more creative freedom to the artists on the project, but a noteworthy effect of simply increasing the particle count is often an increase in visual fidelity. This is because an increase in the number of particles will bring the total count slightly closer to the aforementioned trillions of molecules that most particle systems aim to simulate. Particle systems were chosen for this optimisation-based project because their quantitative nature makes them appropriate for quantifying the performance impact of any changes made to the program, and any successful optimisations will permit an improved framerate and particle count for this particle system demonstration.
 
 \subsection{Offline Rendering}
 
 A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity isn't required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but an film company can often afford to take hours to render each frame. However, faster rendering is still beneficial; it is cost effective for film companies to invest in \emph{render farms}, clusters of networked computers configured specifically for fast rendering, in order to gain the ability to render more complex scenes and produce films more rapidly.
+% TODO: you gotta give an example. Like, disney snow? cite.
 
 \subsection{Real-time Graphics Pipelines}
 
@@ -169,12 +170,12 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 \subsection{Performance Profiling}
 
-% (Discuss how I'll be using Vulkan's validation layers, Visual Studio's profiling tools, and concurrency visualisation tools such as RAD Game Tools' Telemetry. Talk about what I'll be looking for when using each tool, and their strengths and weaknesses.)
+% (Discuss how I'll be using Vulkan's validation layers, Visual Studio's profiling tools, and concurrency visualisation tools such as RAD Game Tools' Telemetry. Talk about what I'll be looking for when using each tool, and their strengths and weaknesses. GPU profiling!)
 
 \section{The Initial Implementation}
 
 % (Describe the design decisions of the program before any optimisation is performed, and any Vulkan-specific implementation details relevant to the project.)
-% My implementation never requires reallocating particles! Brag!
+% My implementation never requires reallocating particles! Brag! It also simplifies SOA so we don't need to do AOSOA!
 
 \section{Optimisation \& Analysis}
 
