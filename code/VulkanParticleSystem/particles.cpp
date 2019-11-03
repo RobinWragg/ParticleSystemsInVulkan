@@ -42,7 +42,7 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(10);
+		particles.resize(500000);
 
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
@@ -77,17 +77,13 @@ namespace particles {
 		*velocity = baseVelocity + velocityRandomness;
 	}
 	
-	void updateOneParticle(int32_t i) {
-		velocities[i] *= 1 - stepSize * airResistance;
-		velocities[i].y += gravity * stepSize;
-		particles[i].position += velocities[i] * stepSize;
-
-		if (particles[i].position.y > groundLevel) respawn(&particles[i], &velocities[i]);
-	}
-	
 	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
 		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
-			updateOneParticle(i);
+			velocities[i] *= 1 - stepSize * airResistance;
+			velocities[i].y += gravity * stepSize;
+			particles[i].position += velocities[i] * stepSize;
+
+			if (particles[i].position.y > groundLevel) respawn(&particles[i], &velocities[i]);
 		}
 	}
 
