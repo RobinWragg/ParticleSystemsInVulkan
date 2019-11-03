@@ -5,16 +5,11 @@ namespace particles {
 	vector<Particle> particles;
 	vector<vec3> velocities;
 
-	HANDLE updateStartSemaphore;
-	HANDLE updateEndSemaphore;
-
-	void semaphoreWait(HANDLE sem) {
-		WaitForSingleObject(sem, INFINITE);
-	}
-
-	void semaphorePost(HANDLE sem) {
-		ReleaseSemaphore(sem, 1, nullptr);
-	}
+	vector<thread> updaterThreads;
+	HANDLE updateStartSemaphore = NULL;
+	HANDLE updateEndSemaphore = NULL;
+	void updaterThread(uint32_t startIndex, uint32_t endIndexExclusive);
+	bool updaterThreadsShouldReturn = false;
 
 	float randf() {
 		static mt19937 randomGenerator((unsigned int)SDL_GetPerformanceCounter());
@@ -22,11 +17,11 @@ namespace particles {
 	}
 
 	void init(SDL_Window *window) {
-		updateStartSemaphore = CreateSemaphore(nullptr, 0, INT32_MAX, "particle_update_start");
+		updateStartSemaphore = CreateSemaphore(NULL, 0, INT32_MAX, "particle_update_start");
 		SDL_assert(updateStartSemaphore);
 
-		updateEndSemaphore = CreateSemaphore(nullptr, 0, INT32_MAX, "particle_update_end");
-		SDL_assert(updateStartSemaphore);
+		updateEndSemaphore = CreateSemaphore(NULL, 0, INT32_MAX, "particle_update_end");
+		SDL_assert(updateEndSemaphore);
 
 		VkVertexInputBindingDescription bindingDesc = {};
 		bindingDesc.binding = 0;
@@ -47,12 +42,20 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(1000000);
+		particles.resize(10000);
 
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
 			particles[i].position = { 1.1, 0.85-randf()*10, 0 };
 			velocities[i] = { 0, 0, 0 };
+		}
+
+		const uint32_t threadCount = thread::hardware_concurrency();
+
+		for (uint32_t i = 0; i < threadCount; i++) {
+			uint32_t rangeStartIndex = (i * (uint32_t)particles.size()) / threadCount;
+			uint32_t rangeEndIndexExclusive = ((i + 1) * (uint32_t)particles.size()) / threadCount;
+			updaterThreads.push_back(thread(updaterThread, rangeStartIndex, rangeEndIndexExclusive));
 		}
 	}
 
@@ -60,6 +63,7 @@ namespace particles {
 	const float airResistance = 0.1f;
 	const float groundLevel = 1.0f;
 	vec3 respawnPosition = { -0.8, -0.1, 0.95 };
+	float stepSize = 0.0f;
 
 	void respawn(Particle *particle, vec3 *velocity) {
 		particle->position = respawnPosition;
@@ -73,7 +77,7 @@ namespace particles {
 		*velocity = baseVelocity + velocityRandomness;
 	}
 	
-	void updateOneParticle(int32_t i, float stepSize) {
+	void updateOneParticle(int32_t i) {
 		velocities[i] *= 1 - stepSize * airResistance;
 		velocities[i].y += gravity * stepSize;
 		particles[i].position += velocities[i] * stepSize;
@@ -81,38 +85,53 @@ namespace particles {
 		if (particles[i].position.y > groundLevel) respawn(&particles[i], &velocities[i]);
 	}
 	
-	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive, float stepSize) {
+	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
 		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
-			updateOneParticle(i, stepSize);
+			updateOneParticle(i);
 		}
 	}
 
-	double t = 0;
+	void updaterThread(uint32_t startIndex, uint32_t endIndexExclusive) {
+		while (!updaterThreadsShouldReturn) {
+			WaitForSingleObject(updateStartSemaphore, INFINITE);
+
+			updateRange(startIndex, endIndexExclusive);
+
+			ReleaseSemaphore(updateEndSemaphore, 1, nullptr);
+		}
+	}
 
 	void update(int particleCount, float deltaTime) {
-		float stepSize = deltaTime * 0.5f;
+		static double totalTime = 0.0;
 
-		// Move the respawn position
-		t += deltaTime;
-		respawnPosition.x = -0.8f + sinf((float)t)*0.1f;
+		// Update the stepSize for updateOneParticle()
+		stepSize = deltaTime * 0.5f;
 
-		vector<thread> threads;
+		// Move the respawn position for respawn()
+		totalTime += deltaTime;
+		respawnPosition.x = -0.8f + sinf((float)totalTime)*0.1f;
 
-		const uint32_t threadCount = thread::hardware_concurrency();
+		// Notify the updater threads that updating should begin
+		ReleaseSemaphore(updateStartSemaphore, (LONG)updaterThreads.size(), nullptr);
 
-		for (uint32_t i = 0; i < threadCount; i++) {
-			uint32_t rangeStartIndex = (i * (uint32_t)particles.size()) / threadCount;
-			uint32_t rangeEndIndexExclusive = ((i + 1) * (uint32_t)particles.size()) / threadCount;
-			threads.push_back(thread(updateRange, rangeStartIndex, rangeEndIndexExclusive, stepSize));
+		// Wait until the updater threads are done
+		for (int i = 0; i < updaterThreads.size(); i++) {
+			WaitForSingleObject(updateEndSemaphore, INFINITE);
 		}
-
-		for (auto &thr : threads) thr.join();
-
-		//printf("done\n");
 	}
 
 	void render() {
 		graphics::render(particles);
+	}
+
+	void destroy() {
+		updaterThreadsShouldReturn = true;
+		ReleaseSemaphore(updateStartSemaphore, (LONG)updaterThreads.size(), nullptr);
+
+		for (auto &thr : updaterThreads) thr.join();
+
+		CloseHandle(updateStartSemaphore);
+		CloseHandle(updateEndSemaphore);
 	}
 }
 

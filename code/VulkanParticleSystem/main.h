@@ -43,4 +43,5 @@ namespace particles {
 	void init(SDL_Window *window);
 	void update(int particleCount, float deltaTime);
 	void render();
+	void destroy();
 }

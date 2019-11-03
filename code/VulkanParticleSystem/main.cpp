@@ -70,6 +70,7 @@ int main(int argc, char* argv[]) {
 		monitorFramerate(deltaTime);
 	}
 
+	particles::destroy();
 	graphics::destroy();
 	SDL_Quit();
 
