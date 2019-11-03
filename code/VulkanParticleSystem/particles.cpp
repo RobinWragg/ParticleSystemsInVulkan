@@ -3,7 +3,9 @@
 namespace particles {
 	
 	vector<Particle> particles;
-	vector<vec3> velocities;
+	vector<float> velocitiesX;
+	vector<float> velocitiesY;
+	vector<float> velocitiesZ;
 
 	vector<thread> updaterThreads;
 	HANDLE updateStartSemaphore = NULL;
@@ -44,10 +46,14 @@ namespace particles {
 
 		particles.resize(500000);
 
-		velocities.resize(particles.size());
+		velocitiesX.resize(particles.size());
+		velocitiesY.resize(particles.size());
+		velocitiesZ.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
 			particles[i].position = { 1.1, 0.85-randf()*10, 0 };
-			velocities[i] = { 0, 0, 0 };
+			velocitiesX[i] = 0;
+			velocitiesY[i] = 0;
+			velocitiesZ[i] = 0;
 		}
 
 		const uint32_t threadCount = thread::hardware_concurrency();
@@ -65,25 +71,34 @@ namespace particles {
 	vec3 respawnPosition = { -0.8, -0.1, 0.95 };
 	float stepSize = 0.0f;
 
-	void respawn(Particle *particle, vec3 *velocity) {
-		particle->position = respawnPosition;
-		particle->brightness = randf();
+	void respawn(int i) {
+		particles[i].position = respawnPosition;
+		particles[i].brightness = randf();
 
 		vec3 baseVelocity = { 0.4, -1, -0.1 };
 		const float velocityRandomnessAmount = 0.3f;
 		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, randf()-0.5 };
 		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.95f+0.05f);
 
-		*velocity = baseVelocity + velocityRandomness;
+		velocitiesX[i] = baseVelocity.x + velocityRandomness.x;
+		velocitiesY[i] = baseVelocity.y + velocityRandomness.y;
+		velocitiesZ[i] = baseVelocity.z + velocityRandomness.z;
 	}
 	
 	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
-		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
-			velocities[i] *= 1 - stepSize * airResistance;
-			velocities[i].y += gravity * stepSize;
-			particles[i].position += velocities[i] * stepSize;
+		float velocityMultiplier = 1 - stepSize * airResistance;
 
-			if (particles[i].position.y > groundLevel) respawn(&particles[i], &velocities[i]);
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesX[i] *= velocityMultiplier;
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesY[i] *= velocityMultiplier;
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesZ[i] *= velocityMultiplier;
+
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
+			velocitiesY[i] += gravity * stepSize;
+			particles[i].position.x += velocitiesX[i] * stepSize;
+			particles[i].position.y += velocitiesY[i] * stepSize;
+			particles[i].position.z += velocitiesZ[i] * stepSize;
+
+			if (particles[i].position.y > groundLevel) respawn(i);
 		}
 	}
 
