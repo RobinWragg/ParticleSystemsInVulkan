@@ -5,12 +5,29 @@ namespace particles {
 	vector<Particle> particles;
 	vector<vec3> velocities;
 
+	HANDLE updateStartSemaphore;
+	HANDLE updateEndSemaphore;
+
+	void semaphoreWait(HANDLE sem) {
+		WaitForSingleObject(sem, INFINITE);
+	}
+
+	void semaphorePost(HANDLE sem) {
+		ReleaseSemaphore(sem, 1, nullptr);
+	}
+
 	float randf() {
 		static mt19937 randomGenerator((unsigned int)SDL_GetPerformanceCounter());
 		return (mt19937::min() + randomGenerator()) / (float)mt19937::max();
 	}
 
 	void init(SDL_Window *window) {
+		updateStartSemaphore = CreateSemaphore(nullptr, 0, INT32_MAX, "particle_update_start");
+		SDL_assert(updateStartSemaphore);
+
+		updateEndSemaphore = CreateSemaphore(nullptr, 0, INT32_MAX, "particle_update_end");
+		SDL_assert(updateStartSemaphore);
+
 		VkVertexInputBindingDescription bindingDesc = {};
 		bindingDesc.binding = 0;
 		bindingDesc.stride = sizeof(Particle);
