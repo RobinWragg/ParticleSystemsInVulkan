@@ -42,7 +42,7 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(10000);
+		particles.resize(10);
 
 		velocities.resize(particles.size());
 		for (int i = 0; i < particles.size(); i++) {
