@@ -114,13 +114,22 @@ namespace particles {
 	}
 
 	void mul_ab_then_add_to_c(float *a, float b, float *c, uint32_t count) {
+		uint32_t vector_count = count / 8;
 		__m256 b_vector = _mm256_set1_ps(b);
 
-		for (uint32_t i = 0; i < count; i += 8) {
-			__m256 *a_vector = (__m256*)&a[i];
-			__m256 *c_vector = (__m256*)&c[i];
-			*c_vector = _mm256_add_ps(*c_vector, _mm256_mul_ps(*a_vector, b_vector));
+		__m256 *mul_results = (__m256*)new __m256[vector_count];
+
+		for (uint32_t i = 0; i < vector_count; i++) {
+			__m256 *a_vector = (__m256*)&a[i*8];
+			mul_results[i] = _mm256_mul_ps(*a_vector, b_vector);
 		}
+
+		for (uint32_t i = 0; i < vector_count; i++) {
+			__m256 *c_vector = (__m256*)&c[i*8];
+			*c_vector = _mm256_add_ps(*c_vector, mul_results[i]);
+		}
+
+		delete[] mul_results;
 	}
 
 	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
@@ -138,18 +147,33 @@ namespace particles {
 
 
 		uint32_t count = endIndexExclusive - startIndex;
-		mul_ab_then_add_to_c(&velocitiesX[startIndex], stepSize, &positionsX[startIndex], count);
-		mul_ab_then_add_to_c(&velocitiesY[startIndex], stepSize, &positionsY[startIndex], count);
-		mul_ab_then_add_to_c(&velocitiesZ[startIndex], stepSize, &positionsZ[startIndex], count);
+		uint32_t vector_count = count / 8;
+		__m256 stepSizeVector = _mm256_set1_ps(stepSize);
+
+		__m256 *velXVector = (__m256*)&velocitiesX[startIndex];
+		__m256 *velYVector = (__m256*)&velocitiesY[startIndex];
+		__m256 *velZVector = (__m256*)&velocitiesZ[startIndex];
+		__m256 *posXVector = (__m256*)&positionsX[startIndex];
+		__m256 *posYVector = (__m256*)&positionsY[startIndex];
+		__m256 *posZVector = (__m256*)&positionsZ[startIndex];
+
+		for (uint32_t i = 0; i < vector_count; i++) {
+			__m256 x = _mm256_mul_ps(velXVector[i], stepSizeVector);
+			__m256 y = _mm256_mul_ps(velYVector[i], stepSizeVector);
+			__m256 z = _mm256_mul_ps(velZVector[i], stepSizeVector);
+			posXVector[i] = _mm256_add_ps(posXVector[i], x);
+			posYVector[i] = _mm256_add_ps(posYVector[i], y);
+			posZVector[i] = _mm256_add_ps(posZVector[i], z);
+		}
+
+
+
+
+
+		//mul_ab_then_add_to_c(&velocitiesX[startIndex], stepSize, &positionsX[startIndex], count);
 		
-		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) buf[i] = velocitiesX[i] * stepSize;
-		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsX[i] += buf[i];
 
 
-
-
-
-		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsX[i] += velocitiesX[i] * stepSize;
 		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsY[i] += velocitiesY[i] * stepSize;
 		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsZ[i] += velocitiesZ[i] * stepSize;
 
