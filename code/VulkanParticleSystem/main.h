@@ -31,7 +31,7 @@ namespace particles {
 namespace graphics {
 	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs);
 	void destroy();
-	void render(const vector<particles::Particle> &particles);
+	void render(uint32_t particleCount, particles::Particle particles[]);
 }
 
 namespace particles {

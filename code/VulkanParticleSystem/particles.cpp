@@ -1,8 +1,20 @@
 #include "main.h"
 
 namespace particles {
+
+	// Multiples of 10000 are divisible by 16
+	uint32_t particleCount = 500000;
+
+	Particle * renderableParticles;
 	
-	vector<Particle> particles;
+	float * buf;
+
+	float * positionsX;
+	float * positionsY;
+	float * positionsZ;
+
+	float * brightnesses;
+
 	vector<float> velocitiesX;
 	vector<float> velocitiesY;
 	vector<float> velocitiesZ;
@@ -19,6 +31,7 @@ namespace particles {
 	}
 
 	void init(SDL_Window *window) {
+		
 		updateStartSemaphore = CreateSemaphore(NULL, 0, INT32_MAX, "particle_update_start");
 		SDL_assert(updateStartSemaphore);
 
@@ -44,13 +57,25 @@ namespace particles {
 
 		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
 
-		particles.resize(500000);
+		renderableParticles = new Particle[particleCount];
+		buf = new float[particleCount];
 
-		velocitiesX.resize(particles.size());
-		velocitiesY.resize(particles.size());
-		velocitiesZ.resize(particles.size());
-		for (int i = 0; i < particles.size(); i++) {
-			particles[i].position = { 1.1, 0.85-randf()*10, 0 };
+		// The positions* arrays and the brightnesses array all share one contiguous block of memory,
+		// Necessary for passing to Vulkan efficiently.
+		float * particlesBasePtr = (float*)malloc(sizeof(float) * 4 * particleCount);
+		positionsX = particlesBasePtr;
+		positionsY = &particlesBasePtr[particleCount];
+		positionsZ = &particlesBasePtr[particleCount * 2];
+		brightnesses = &particlesBasePtr[particleCount * 3];
+
+		velocitiesX.resize(particleCount);
+		velocitiesY.resize(particleCount);
+		velocitiesZ.resize(particleCount);
+		for (uint32_t i = 0; i < particleCount; i++) {
+			positionsX[i] = 1.1f;
+			positionsY[i] = 0.85f - randf() * 10;
+			positionsZ[i] = 0;
+
 			velocitiesX[i] = 0;
 			velocitiesY[i] = 0;
 			velocitiesZ[i] = 0;
@@ -59,8 +84,8 @@ namespace particles {
 		const uint32_t threadCount = thread::hardware_concurrency();
 
 		for (uint32_t i = 0; i < threadCount; i++) {
-			uint32_t rangeStartIndex = (i * (uint32_t)particles.size()) / threadCount;
-			uint32_t rangeEndIndexExclusive = ((i + 1) * (uint32_t)particles.size()) / threadCount;
+			uint32_t rangeStartIndex = (i * particleCount) / threadCount;
+			uint32_t rangeEndIndexExclusive = ((i + 1) * particleCount) / threadCount;
 			updaterThreads.push_back(thread(updaterThread, rangeStartIndex, rangeEndIndexExclusive));
 		}
 	}
@@ -72,8 +97,11 @@ namespace particles {
 	float stepSize = 0.0f;
 
 	void respawn(int i) {
-		particles[i].position = respawnPosition;
-		particles[i].brightness = randf();
+		positionsX[i] = respawnPosition.x;
+		positionsY[i] = respawnPosition.y;
+		positionsZ[i] = respawnPosition.z;
+
+		brightnesses[i] = randf();
 
 		vec3 baseVelocity = { 0.4, -1, -0.1 };
 		const float velocityRandomnessAmount = 0.3f;
@@ -84,7 +112,17 @@ namespace particles {
 		velocitiesY[i] = baseVelocity.y + velocityRandomness.y;
 		velocitiesZ[i] = baseVelocity.z + velocityRandomness.z;
 	}
-	
+
+	void mul_ab_then_add_to_c(float *a, float b, float *c, uint32_t count) {
+		__m256 b_vector = _mm256_set1_ps(b);
+
+		for (uint32_t i = 0; i < count; i += 8) {
+			__m256 *a_vector = (__m256*)&a[i];
+			__m256 *c_vector = (__m256*)&c[i];
+			*c_vector = _mm256_add_ps(*c_vector, _mm256_mul_ps(*a_vector, b_vector));
+		}
+	}
+
 	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
 		float velocityMultiplier = 1 - stepSize * airResistance;
 
@@ -92,13 +130,31 @@ namespace particles {
 		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesY[i] *= velocityMultiplier;
 		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesZ[i] *= velocityMultiplier;
 
-		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
-			velocitiesY[i] += gravity * stepSize;
-			particles[i].position.x += velocitiesX[i] * stepSize;
-			particles[i].position.y += velocitiesY[i] * stepSize;
-			particles[i].position.z += velocitiesZ[i] * stepSize;
+		float gravityStep = gravity * stepSize;
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesY[i] += gravityStep;
 
-			if (particles[i].position.y > groundLevel) respawn(i);
+
+
+
+
+		uint32_t count = endIndexExclusive - startIndex;
+		mul_ab_then_add_to_c(&velocitiesX[startIndex], stepSize, &positionsX[startIndex], count);
+		mul_ab_then_add_to_c(&velocitiesY[startIndex], stepSize, &positionsY[startIndex], count);
+		mul_ab_then_add_to_c(&velocitiesZ[startIndex], stepSize, &positionsZ[startIndex], count);
+		
+		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) buf[i] = velocitiesX[i] * stepSize;
+		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsX[i] += buf[i];
+
+
+
+
+
+		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsX[i] += velocitiesX[i] * stepSize;
+		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsY[i] += velocitiesY[i] * stepSize;
+		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsZ[i] += velocitiesZ[i] * stepSize;
+
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
+			if (positionsY[i] > groundLevel) respawn(i);
 		}
 	}
 
@@ -132,7 +188,13 @@ namespace particles {
 	}
 
 	void render() {
-		graphics::render(particles);
+		for (uint32_t i = 0; i < particleCount; i++) {
+			renderableParticles[i].position.x = positionsX[i];
+			renderableParticles[i].position.y = positionsY[i];
+			renderableParticles[i].position.z = positionsZ[i];
+			renderableParticles[i].brightness = brightnesses[i];
+		}
+		graphics::render(particleCount, renderableParticles);
 	}
 
 	void destroy() {

@@ -308,11 +308,11 @@ namespace graphics {
 		return 0;
 	}
 
-	void buildVertexBuffer(const vector<particles::Particle> &particles, VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
+	void buildVertexBuffer(uint32_t particleCount, particles::Particle particles[], VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
 		
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(particles[0]) * particles.size();
+		bufferInfo.size = sizeof(particles[0]) * particleCount;
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -334,7 +334,7 @@ namespace graphics {
 
 		void * data;
 		vkMapMemory(device, *vertexBufferMemory, 0, bufferInfo.size, 0, &data);
-		memcpy(data, particles.data(), (size_t)bufferInfo.size);
+		memcpy(data, particles, (size_t)bufferInfo.size);
 		vkUnmapMemory(device, *vertexBufferMemory);
 	}
 
@@ -869,14 +869,14 @@ namespace graphics {
 		buildSemaphores();
 	}
 
-	void render(const vector<particles::Particle> &particles) {
+	void render(uint32_t particleCount, particles::Particle particles[]) {
 		
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-		buildVertexBuffer(particles, &vertexBuffer, &vertexBufferMemory);
+		buildVertexBuffer(particleCount, particles, &vertexBuffer, &vertexBufferMemory);
 
 		vector<VkCommandBuffer> commandBuffers;
-		buildCommandBuffers(commandPool, vertexBuffer, (uint32_t)particles.size(), &commandBuffers);
+		buildCommandBuffers(commandPool, vertexBuffer, particleCount, &commandBuffers);
 
 		// Submit commands
 		uint32_t swapchainImageIndex = INT32_MAX;
