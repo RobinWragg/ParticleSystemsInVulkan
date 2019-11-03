@@ -5,7 +5,7 @@ namespace graphics {
 	const auto requiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const int requiredSwapchainImageCount = 2;
 	bool enableVsync = false;
-	bool enableDepthTesting = true;
+	bool enableDepthTesting = false;
 
 	vector<const char*> requiredValidationLayers = {
 #ifdef _DEBUG
