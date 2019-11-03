@@ -40,7 +40,7 @@ namespace particles {
 
 		VkVertexInputBindingDescription bindingDesc = {};
 		bindingDesc.binding = 0;
-		bindingDesc.stride = sizeof(Particle);
+		bindingDesc.stride = sizeof(Particle); // Maximum: 2048
 		bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		VkVertexInputAttributeDescription positionAttribDesc = {};
@@ -113,69 +113,37 @@ namespace particles {
 		velocitiesZ[i] = baseVelocity.z + velocityRandomness.z;
 	}
 
-	void mul_ab_then_add_to_c(float *a, float b, float *c, uint32_t count) {
-		uint32_t vector_count = count / 8;
-		__m256 b_vector = _mm256_set1_ps(b);
-
-		__m256 *mul_results = (__m256*)new __m256[vector_count];
-
-		for (uint32_t i = 0; i < vector_count; i++) {
-			__m256 *a_vector = (__m256*)&a[i*8];
-			mul_results[i] = _mm256_mul_ps(*a_vector, b_vector);
-		}
-
-		for (uint32_t i = 0; i < vector_count; i++) {
-			__m256 *c_vector = (__m256*)&c[i*8];
-			*c_vector = _mm256_add_ps(*c_vector, mul_results[i]);
-		}
-
-		delete[] mul_results;
-	}
-
 	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
-		float velocityMultiplier = 1 - stepSize * airResistance;
-
-		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesX[i] *= velocityMultiplier;
-		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesY[i] *= velocityMultiplier;
-		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesZ[i] *= velocityMultiplier;
-
-		float gravityStep = gravity * stepSize;
-		for (uint32_t i = startIndex; i < endIndexExclusive; i++) velocitiesY[i] += gravityStep;
-
-
-
-
 
 		uint32_t count = endIndexExclusive - startIndex;
 		uint32_t vector_count = count / 8;
 		__m256 stepSizeVector = _mm256_set1_ps(stepSize);
+		__m256 velocityMultiplierVector = _mm256_set1_ps(1 - stepSize * airResistance);
+		__m256 gravityStepVector = _mm256_set1_ps(gravity * stepSize);
 
 		__m256 *velXVector = (__m256*)&velocitiesX[startIndex];
-		__m256 *velYVector = (__m256*)&velocitiesY[startIndex];
-		__m256 *velZVector = (__m256*)&velocitiesZ[startIndex];
 		__m256 *posXVector = (__m256*)&positionsX[startIndex];
+		__m256 *velYVector = (__m256*)&velocitiesY[startIndex];
 		__m256 *posYVector = (__m256*)&positionsY[startIndex];
+		__m256 *velZVector = (__m256*)&velocitiesZ[startIndex];
 		__m256 *posZVector = (__m256*)&positionsZ[startIndex];
 
+		// x, y, and z are grouped together here for better cache-friendliness
+
 		for (uint32_t i = 0; i < vector_count; i++) {
-			__m256 x = _mm256_mul_ps(velXVector[i], stepSizeVector);
-			__m256 y = _mm256_mul_ps(velYVector[i], stepSizeVector);
-			__m256 z = _mm256_mul_ps(velZVector[i], stepSizeVector);
-			posXVector[i] = _mm256_add_ps(posXVector[i], x);
-			posYVector[i] = _mm256_add_ps(posYVector[i], y);
-			posZVector[i] = _mm256_add_ps(posZVector[i], z);
+			velXVector[i] = _mm256_mul_ps(velXVector[i], velocityMultiplierVector);
+			posXVector[i] = _mm256_add_ps(posXVector[i], _mm256_mul_ps(velXVector[i], stepSizeVector));
 		}
 
+		for (uint32_t i = 0; i < vector_count; i++) {
+			velYVector[i] = _mm256_add_ps(_mm256_mul_ps(velYVector[i], velocityMultiplierVector), gravityStepVector);
+			posYVector[i] = _mm256_add_ps(posYVector[i], _mm256_mul_ps(velYVector[i], stepSizeVector));
+		}
 
-
-
-
-		//mul_ab_then_add_to_c(&velocitiesX[startIndex], stepSize, &positionsX[startIndex], count);
-		
-
-
-		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsY[i] += velocitiesY[i] * stepSize;
-		//for (uint32_t i = startIndex; i < endIndexExclusive; i++) positionsZ[i] += velocitiesZ[i] * stepSize;
+		for (uint32_t i = 0; i < vector_count; i++) {
+			velZVector[i] = _mm256_mul_ps(velZVector[i], velocityMultiplierVector);
+			posZVector[i] = _mm256_add_ps(posZVector[i], _mm256_mul_ps(velZVector[i], stepSizeVector));
+		}
 
 		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
 			if (positionsY[i] > groundLevel) respawn(i);
@@ -212,12 +180,15 @@ namespace particles {
 	}
 
 	void render() {
+
+		// Temporary compatibility code for graphics::render(), while the AVX instruction code is developed.
 		for (uint32_t i = 0; i < particleCount; i++) {
 			renderableParticles[i].position.x = positionsX[i];
 			renderableParticles[i].position.y = positionsY[i];
 			renderableParticles[i].position.z = positionsZ[i];
 			renderableParticles[i].brightness = brightnesses[i];
 		}
+
 		graphics::render(particleCount, renderableParticles);
 	}
 
