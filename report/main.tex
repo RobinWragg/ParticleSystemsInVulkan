@@ -144,12 +144,14 @@ function initialise() {
 function updaterThread() {
 	while true {
 		onUpdateStart.wait();
-		updateParticleRange(deltaTime);
+		updateParticleRange();
 		onUpdateComplete.post();
 	}
 }
 
 function updateAllParticles() {
+	onUpdateComplete = semaphore(updaterThreadCount);
+	
   for i in updaterThreadCount {
     onUpdateStart.post();
   }
