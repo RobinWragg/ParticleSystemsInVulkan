@@ -533,6 +533,7 @@ namespace graphics {
 			renderPassInfo.renderArea.extent = extent;
 
 			vkCmdBeginRenderPass((*commandBuffersOut)[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			clearValues.resize(0);
 			vkCmdBindPipeline((*commandBuffersOut)[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 			VkDeviceSize offsets[] = { 0 };
@@ -920,6 +921,7 @@ namespace graphics {
 		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
 		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
 
+		vkFreeCommandBuffers(device, commandPool, commandBuffers.size(), commandBuffers.data());
 		vkDestroyBuffer(device, vertexBuffer, nullptr);
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
 	}
