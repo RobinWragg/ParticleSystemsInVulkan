@@ -89,7 +89,7 @@ namespace particles {
 
 		// Initial state
 		for (auto &x : positionsX) x = _mm256_set1_ps(1.1f);
-		for (uint32_t i = 0; i < particleCount; i++) M256s_TO_FLOATS(positionsY)[i] = 0.85f - randf() * 10;
+		for (uint32_t i = 0; i < particleCount; i++) M256s_TO_FLOATS(positionsY)[i] = 0.8f - (i / (float)particleCount) * 7;
 		for (auto &z : positionsZ) z = _mm256_set1_ps(0.0f);
 		for (auto &x : velocitiesX) x = _mm256_set1_ps(0.0f);
 		for (auto &y : velocitiesY) y = _mm256_set1_ps(0.0f);
@@ -150,32 +150,23 @@ namespace particles {
 
 	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
 
-		uint32_t localM256Count = endIndexExclusive - startIndex;
 		__m256 stepSizeVector = _mm256_set1_ps(stepSize);
 		__m256 velocityMultiplierVector = _mm256_set1_ps(1 - stepSize * airResistance);
 		__m256 gravityStepVector = _mm256_set1_ps(gravity * stepSize);
-
-		// x, y, and z are grouped together here for better cache-friendliness
-
-		for (uint32_t i = 0; i < localM256Count; i++) {
-			velocitiesX[i] = _mm256_mul_ps(velocitiesX[i], velocityMultiplierVector);
-			positionsX[i] = _mm256_add_ps(positionsX[i], _mm256_mul_ps(velocitiesX[i], stepSizeVector));
-		}
-
-		for (uint32_t i = 0; i < localM256Count; i++) {
-			velocitiesY[i] = _mm256_add_ps(_mm256_mul_ps(velocitiesY[i], velocityMultiplierVector), gravityStepVector);
-			positionsY[i] = _mm256_add_ps(positionsY[i], _mm256_mul_ps(velocitiesY[i], stepSizeVector));
-		}
-
-		for (uint32_t i = 0; i < localM256Count; i++) {
-			velocitiesZ[i] = _mm256_mul_ps(velocitiesZ[i], velocityMultiplierVector);
-			positionsZ[i] = _mm256_add_ps(positionsZ[i], _mm256_mul_ps(velocitiesZ[i], stepSizeVector));
-		}
-
 		__m256 groundLevelVector = _mm256_set1_ps(groundLevel);
 		__m256 zeroVector = _mm256_set1_ps(0);
 
-		for (uint32_t i = 0; i < m256Count; i++) {
+		for (uint32_t i = startIndex; i < endIndexExclusive; i++) {
+			velocitiesX[i] = _mm256_mul_ps(velocitiesX[i], velocityMultiplierVector);
+			positionsX[i] = _mm256_add_ps(positionsX[i], _mm256_mul_ps(velocitiesX[i], stepSizeVector));
+
+			velocitiesY[i] = _mm256_add_ps(_mm256_mul_ps(velocitiesY[i], velocityMultiplierVector), gravityStepVector);
+			positionsY[i] = _mm256_add_ps(positionsY[i], _mm256_mul_ps(velocitiesY[i], stepSizeVector));
+
+			velocitiesZ[i] = _mm256_mul_ps(velocitiesZ[i], velocityMultiplierVector);
+			positionsZ[i] = _mm256_add_ps(positionsZ[i], _mm256_mul_ps(velocitiesZ[i], stepSizeVector));
+
+			// If all particles in the __m256 are below groundLevel (_CMP_LE_OQ == false), respawn them
 			__m256 comparisonResult = _mm256_cmp_ps(positionsY[i], groundLevelVector, _CMP_LE_OQ);
 			
 			if (memcmp(&comparisonResult, &zeroVector, sizeof(comparisonResult)) == 0) {
@@ -214,7 +205,6 @@ namespace particles {
 	}
 
 	void render() {
-
 		// Temporary compatibility code for graphics::render(), while the AVX instruction code is developed.
 		float *xFLoats = M256s_TO_FLOATS(positionsX);
 		float *yFloats = M256s_TO_FLOATS(positionsY);
