@@ -869,13 +869,29 @@ namespace graphics {
 		buildSemaphores();
 	}
 
-	void render(uint32_t particleCount, particles::Particle particles[]) {
-		
-		VkBuffer vertexBuffer = VK_NULL_HANDLE;
-		VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-		buildVertexBuffer(particleCount, particles, &vertexBuffer, &vertexBufferMemory);
+	// Ephemeral render buffers
+	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+	vector<VkCommandBuffer> commandBuffers;
 
-		vector<VkCommandBuffer> commandBuffers;
+	void freeRenderBuffers() {
+		vkFreeCommandBuffers(device, commandPool, (uint32_t)commandBuffers.size(), commandBuffers.data());
+		commandBuffers.resize(0);
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vkFreeMemory(device, vertexBufferMemory, nullptr);
+		vertexBuffer = VK_NULL_HANDLE;
+	}
+
+	void render(uint32_t particleCount, particles::Particle particles[]) {
+
+		if (vertexBuffer != VK_NULL_HANDLE) {
+			// The queue may not have finished its commands from the last frame yet,
+			// so we wait for everything to be finished before rebuilding the buffers.
+			vkQueueWaitIdle(queue);
+			freeRenderBuffers();
+		}
+
+		buildVertexBuffer(particleCount, particles, &vertexBuffer, &vertexBufferMemory);
 		buildCommandBuffers(commandPool, vertexBuffer, particleCount, &commandBuffers);
 
 		// Submit commands
@@ -898,9 +914,6 @@ namespace graphics {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &renderCompletedSemaphore;
 
-		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
-		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
-
 		result = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 		SDL_assert(result == VK_SUCCESS);
 
@@ -917,16 +930,12 @@ namespace graphics {
 
 		result = vkQueuePresentKHR(queue, &presentInfo);
 		SDL_assert(result == VK_SUCCESS);
-
-		// The command buffer could be in a "pending" state (not finished executing), so we wait for everything to be finished before submission.
-		vkQueueWaitIdle(queue); // TODO: Possible optimisation opportunity here
-
-		vkFreeCommandBuffers(device, commandPool, (uint32_t)commandBuffers.size(), commandBuffers.data());
-		vkDestroyBuffer(device, vertexBuffer, nullptr);
-		vkFreeMemory(device, vertexBufferMemory, nullptr);
 	}
 
 	void destroy() {
+		vkQueueWaitIdle(queue);
+		freeRenderBuffers();
+
 		vkDestroyCommandPool(device, commandPool, nullptr);
 
 		if (!requiredValidationLayers.empty()) {
