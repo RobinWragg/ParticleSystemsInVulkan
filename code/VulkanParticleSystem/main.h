@@ -29,9 +29,12 @@ namespace particles {
 }
 
 namespace graphics {
-	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs);
+	void init(
+		SDL_Window *window,
+		const vector<VkVertexInputBindingDescription> &bindingDesc,
+		const vector<VkVertexInputAttributeDescription> &attribDescs);
 	void destroy();
-	void render(uint32_t particleCount, particles::Particle particles[]);
+	void render(uint32_t particleCount, uint8_t componentCount, float *componentPtrs[]);
 }
 
 namespace particles {

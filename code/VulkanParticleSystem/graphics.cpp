@@ -308,7 +308,9 @@ namespace graphics {
 		return 0;
 	}
 
-	void buildVertexBuffer(uint32_t particleCount, particles::Particle particles[], VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
+	void buildVertexBuffer(
+		uint32_t particleCount, uint8_t componentCount, float *componentPtrs[],
+		VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
 		
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -338,7 +340,9 @@ namespace graphics {
 		vkUnmapMemory(device, *vertexBufferMemory);
 	}
 
-	void buildPipeline(VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
+	void buildPipeline(
+		const vector<VkVertexInputBindingDescription> &bindingDescs,
+		const vector<VkVertexInputAttributeDescription> &attribDescs) {
 		
 		vector<VkPipelineShaderStageCreateInfo> shaderStages = {
 			buildShaderStage("basic_vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
@@ -348,8 +352,8 @@ namespace graphics {
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-		vertexInputInfo.vertexBindingDescriptionCount = 1;
-		vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
+		vertexInputInfo.vertexBindingDescriptionCount = (int)bindingDescs.size();
+		vertexInputInfo.pVertexBindingDescriptions = bindingDescs.data();
 
 		vertexInputInfo.vertexAttributeDescriptionCount = (int)attribDescs.size();
 		vertexInputInfo.pVertexAttributeDescriptions = attribDescs.data();
@@ -658,7 +662,11 @@ namespace graphics {
 		endDepthTestingCommandBuffer(commandBuffer, commandPool);
 	}
 
-	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
+	void init(
+		SDL_Window *window,
+		const vector<VkVertexInputBindingDescription> &bindingDescs,
+		const vector<VkVertexInputAttributeDescription> &attribDescs) {
+
 		printAvailableInstanceLayers();
 
 		vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -862,7 +870,7 @@ namespace graphics {
 		printf("\nInitialised Vulkan\n");
 
 		buildRenderPass();
-		buildPipeline(bindingDesc, attribDescs);
+		buildPipeline(bindingDescs, attribDescs);
 		commandPool = buildCommandPool(device, queueFamilyIndex);
 		if (enableDepthTesting) setupDepthTesting(commandPool);
 		buildFramebuffers();
@@ -870,28 +878,32 @@ namespace graphics {
 	}
 
 	// Ephemeral render buffers
-	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	vector<VkBuffer> vertexBuffers;
 	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
 	vector<VkCommandBuffer> commandBuffers;
 
 	void freeRenderBuffers() {
 		vkFreeCommandBuffers(device, commandPool, (uint32_t)commandBuffers.size(), commandBuffers.data());
 		commandBuffers.resize(0);
-		vkDestroyBuffer(device, vertexBuffer, nullptr);
+
+		for (auto &buffer : vertexBuffers) vkDestroyBuffer(device, buffer, nullptr);
+		vertexBuffers.resize(0);
+
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
-		vertexBuffer = VK_NULL_HANDLE;
+		vertexBufferMemory = VK_NULL_HANDLE;
 	}
 
-	void render(uint32_t particleCount, particles::Particle particles[]) {
+	void render(uint32_t particleCount, uint8_t componentCount, float *componentPtrs[]) {
 
-		if (vertexBuffer != VK_NULL_HANDLE) {
+		if (!commandBuffers.empty()) {
 			// The queue may not have finished its commands from the last frame yet,
 			// so we wait for everything to be finished before rebuilding the buffers.
 			vkQueueWaitIdle(queue);
 			freeRenderBuffers();
 		}
 
-		buildVertexBuffer(particleCount, particles, &vertexBuffer, &vertexBufferMemory);
+		buildVertexBuffer(particleCount, componentCount, componentPtrs, &vertexBuffer, &vertexBufferMemory);
+		SDL_assert_release(false);
 		buildCommandBuffers(commandPool, vertexBuffer, particleCount, &commandBuffers);
 
 		// Submit commands

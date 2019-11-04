@@ -33,6 +33,43 @@ namespace particles {
 		return (mt19937::min() + randomGenerator()) / (float)mt19937::max();
 	}
 
+	void addComponentDescriptions(
+		vector<VkVertexInputBindingDescription> *bindingDescs,
+		vector<VkVertexInputAttributeDescription> *attribDescs) {
+
+		// These happen to be the same because there is only one attribDesc per bindingDesc.
+		int bindingIndex = bindingDescs->size();
+		int location = bindingDescs->size();
+
+		VkVertexInputBindingDescription bindingDesc = {};
+		VkVertexInputAttributeDescription attribDesc = {};
+
+		bindingDesc.binding = bindingIndex;
+		bindingDesc.stride = sizeof(float);
+		bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		attribDesc.binding = bindingIndex;
+		attribDesc.location = location;
+		attribDesc.format = VK_FORMAT_R32_SFLOAT;
+		attribDesc.offset = 0;
+		
+		bindingDescs->push_back(bindingDesc);
+		attribDescs->push_back(attribDesc);
+	}
+
+	void setupGraphicsDescriptions(SDL_Window *window) {
+
+		vector<VkVertexInputBindingDescription> bindingDescs;
+		vector<VkVertexInputAttributeDescription> attribDescs;
+		
+		addComponentDescriptions(&bindingDescs, &attribDescs); // pos X
+		addComponentDescriptions(&bindingDescs, &attribDescs); // pos Y
+		addComponentDescriptions(&bindingDescs, &attribDescs); // pos Z
+		addComponentDescriptions(&bindingDescs, &attribDescs); // brightness
+
+		graphics::init(window, bindingDescs, attribDescs);
+	}
+
 	void init(SDL_Window *window) {
 		
 		updateStartSemaphore = CreateSemaphore(NULL, 0, INT32_MAX, "particle_update_start");
@@ -41,24 +78,7 @@ namespace particles {
 		updateEndSemaphore = CreateSemaphore(NULL, 0, INT32_MAX, "particle_update_end");
 		SDL_assert(updateEndSemaphore);
 
-		VkVertexInputBindingDescription bindingDesc = {};
-		bindingDesc.binding = 0;
-		bindingDesc.stride = sizeof(Particle); // Maximum: 2048
-		bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		VkVertexInputAttributeDescription positionAttribDesc = {};
-		positionAttribDesc.binding = 0;
-		positionAttribDesc.location = 0;
-		positionAttribDesc.format = VK_FORMAT_R32G32B32_SFLOAT;
-		positionAttribDesc.offset = offsetof(Particle, position);
-
-		VkVertexInputAttributeDescription brightnessAttribDesc = {};
-		brightnessAttribDesc.binding = 0;
-		brightnessAttribDesc.location = 1;
-		brightnessAttribDesc.format = VK_FORMAT_R32_SFLOAT;
-		brightnessAttribDesc.offset = offsetof(Particle, brightness);
-
-		graphics::init(window, bindingDesc, { positionAttribDesc, brightnessAttribDesc });
+		setupGraphicsDescriptions(window);
 
 		renderableParticles = new Particle[particleCount];
 
@@ -205,20 +225,15 @@ namespace particles {
 	}
 
 	void render() {
-		// Temporary compatibility code for graphics::render(), while the AVX instruction code is developed.
-		float *xFLoats = M256s_TO_FLOATS(positionsX);
-		float *yFloats = M256s_TO_FLOATS(positionsY);
-		float *zFloats = M256s_TO_FLOATS(positionsZ);
-		float *brightnessFloats = M256s_TO_FLOATS(brightnesses);
+		int componentCount = 4; // x, y, z, brightness
+		float * componentPtrs[] = {
+			(float*)positionsX.data(),
+			(float*)positionsY.data(),
+			(float*)positionsZ.data(),
+			(float*)brightnesses.data()
+		};
 		
-		for (uint32_t i = 0; i < particleCount; i++) {
-			renderableParticles[i].position.x = xFLoats[i];
-			renderableParticles[i].position.y = yFloats[i];
-			renderableParticles[i].position.z = zFloats[i];
-			renderableParticles[i].brightness = brightnessFloats[i];
-		}
-
-		graphics::render(particleCount, renderableParticles);
+		graphics::render(particleCount, componentCount, componentPtrs);
 	}
 
 	void destroy() {
