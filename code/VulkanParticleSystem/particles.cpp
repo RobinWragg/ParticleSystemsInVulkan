@@ -115,29 +115,37 @@ namespace particles {
 	vec3 respawnPosition = { -0.8, -0.1, 0.95 };
 	float stepSize = 0.0f;
 
-	void assignFloat(vector<__m256> m256s, uint32_t m256Index, uint8_t floatIndex, float value) {
-		float floats[floatsPerM256];
+	void getRandomsForRespawn(__m256 &brightnesses, __m256 &velX, __m256 &velY, __m256 &velZ) {
+		float bufferA[floatsPerM256];
+		float bufferB[floatsPerM256];
+		float bufferC[floatsPerM256];
 
-		_mm256_store_ps(floats, m256s[m256Index]);
-		floats[floatIndex] = respawnPosition.x;
-		positionsX[m256Index] = _mm256_load_ps(floats);
-	}
-
-	void respawn(uint32_t m256Index, uint8_t floatIndex) {
-		positionsX[m256Index] = _mm256_set1_ps(respawnPosition.x);
-		positionsY[m256Index] = _mm256_set1_ps(respawnPosition.y);
-		positionsZ[m256Index] = _mm256_set1_ps(respawnPosition.z);
-		
-		brightnesses[m256Index] = _mm256_set1_ps(randf());
+		for (int i = 0; i < floatsPerM256; i++) bufferA[i] = randf();
+		brightnesses = _mm256_load_ps(bufferA);
 
 		vec3 baseVelocity = { 0.4, -1, -0.1 };
 		const float velocityRandomnessAmount = 0.3f;
-		vec3 velocityRandomness = { randf()-0.5f, randf()-0.5f, randf()-0.5 };
-		velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.95f+0.05f);
 
-		velocitiesX[m256Index] = _mm256_set1_ps(baseVelocity.x + velocityRandomness.x);
-		velocitiesY[m256Index] = _mm256_set1_ps(baseVelocity.y + velocityRandomness.y);
-		velocitiesZ[m256Index] = _mm256_set1_ps(baseVelocity.z + velocityRandomness.z);
+		for (int i = 0; i < floatsPerM256; i++) {
+			vec3 velocityRandomness = { randf() - 0.5f, randf() - 0.5f, randf() - 0.5 };
+			velocityRandomness = normalize(velocityRandomness) * velocityRandomnessAmount * (randf()*0.95f + 0.05f);
+			vec3 velocity = baseVelocity + velocityRandomness;
+
+			bufferA[i] = velocity.x;
+			bufferB[i] = velocity.y;
+			bufferC[i] = velocity.z;
+		}
+
+		velX = _mm256_load_ps(bufferA);
+		velY = _mm256_load_ps(bufferB);
+		velZ = _mm256_load_ps(bufferC);
+	}
+
+	void respawnParticleVectorAtIndex(uint32_t m256Index) {
+		positionsX[m256Index] = _mm256_set1_ps(respawnPosition.x);
+		positionsY[m256Index] = _mm256_set1_ps(respawnPosition.y);
+		positionsZ[m256Index] = _mm256_set1_ps(respawnPosition.z);
+		getRandomsForRespawn(brightnesses[m256Index], velocitiesX[m256Index], velocitiesY[m256Index], velocitiesZ[m256Index]);
 	}
 
 	void updateRange(uint32_t startIndex, uint32_t endIndexExclusive) {
@@ -164,13 +172,14 @@ namespace particles {
 			positionsZ[i] = _mm256_add_ps(positionsZ[i], _mm256_mul_ps(velocitiesZ[i], stepSizeVector));
 		}
 
-		float *yFloats = M256s_TO_FLOATS(positionsY);
+		__m256 groundLevelVector = _mm256_set1_ps(groundLevel);
+		__m256 zeroVector = _mm256_set1_ps(0);
 
-		for (uint32_t p = 0; p < particleCount; p++) {
-			if (yFloats[p] > groundLevel) {
-				uint32_t m256Index = p / floatsPerM256;
-				uint32_t m256FloatIndex = p % floatsPerM256;
-				respawn(m256Index, m256FloatIndex);
+		for (uint32_t i = 0; i < m256Count; i++) {
+			__m256 comparisonResult = _mm256_cmp_ps(positionsY[i], groundLevelVector, _CMP_LE_OQ);
+			
+			if (memcmp(&comparisonResult, &zeroVector, sizeof(comparisonResult)) == 0) {
+				respawnParticleVectorAtIndex(i);
 			}
 		}
 	}
