@@ -314,7 +314,7 @@ namespace graphics {
 		
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(particles[0]) * particleCount;
+		bufferInfo.size = sizeof(float) * particleCount * componentCount;
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -334,9 +334,15 @@ namespace graphics {
 		result = vkBindBufferMemory(device, *vertexBuffer, *vertexBufferMemory, 0);
 		SDL_assert(result == VK_SUCCESS);
 
-		void * data;
-		vkMapMemory(device, *vertexBufferMemory, 0, bufferInfo.size, 0, &data);
-		memcpy(data, particles, (size_t)bufferInfo.size);
+		uint8_t * data;
+		vkMapMemory(device, *vertexBufferMemory, 0, bufferInfo.size, 0, (void**)&data);
+
+		uint32_t bytesPerComponentArray = bufferInfo.size / componentCount;
+		for (int c = 0; c < componentCount; c++) {
+			printf("%i\n", c);
+			memcpy(&data[c * bytesPerComponentArray], componentPtrs[c], bytesPerComponentArray);
+		}
+		
 		vkUnmapMemory(device, *vertexBufferMemory);
 	}
 
@@ -541,6 +547,12 @@ namespace graphics {
 			vkCmdBindPipeline((*commandBuffersOut)[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 			VkDeviceSize offsets[] = { 0 };
+
+			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
+			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
+			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
+			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
+			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
 			vkCmdBindVertexBuffers((*commandBuffersOut)[i], 0, 1, &vertexBuffer, offsets);
 
 			vkCmdDraw((*commandBuffersOut)[i], vertexCount, 1, 0, 0);
@@ -878,7 +890,7 @@ namespace graphics {
 	}
 
 	// Ephemeral render buffers
-	vector<VkBuffer> vertexBuffers;
+	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
 	vector<VkCommandBuffer> commandBuffers;
 
@@ -886,8 +898,10 @@ namespace graphics {
 		vkFreeCommandBuffers(device, commandPool, (uint32_t)commandBuffers.size(), commandBuffers.data());
 		commandBuffers.resize(0);
 
-		for (auto &buffer : vertexBuffers) vkDestroyBuffer(device, buffer, nullptr);
-		vertexBuffers.resize(0);
+		//for (auto &buffer : vertexBuffers) vkDestroyBuffer(device, buffer, nullptr);
+		//vertexBuffers.resize(0);
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vertexBuffer = VK_NULL_HANDLE;
 
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
 		vertexBufferMemory = VK_NULL_HANDLE;
@@ -903,7 +917,6 @@ namespace graphics {
 		}
 
 		buildVertexBuffer(particleCount, componentCount, componentPtrs, &vertexBuffer, &vertexBufferMemory);
-		SDL_assert_release(false);
 		buildCommandBuffers(commandPool, vertexBuffer, particleCount, &commandBuffers);
 
 		// Submit commands
