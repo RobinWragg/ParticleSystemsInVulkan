@@ -101,13 +101,23 @@ Vulkan is a cross-platform Application Programming Interface for rendering 3D gr
 % TODO: illustrate Amdahl's law
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{cpu_cores}
-\caption{Theoretical best-case execution time of a program that requires one second of CPU time, by CPU core count.}
+\caption{Amdahl's Law: Best-case execution time of a program that requires one second of CPU time, by CPU core count.}
 \label{fig:cpu_cores}
 \end{figure}
 
 Concurrent execution is the very common technique in modern computing of running multiple threads in a single program; the effect is equivalent to two or more processes with access to the same memory. This allows a CPU with multiple cores to run more than one of these threads at once.
 
-All modern consumer CPUs have at least two physical cores, so the performance of a program is can sometimes be over twice as slow as its potential if it doesn't utilise multiple threads effectively in its performance-critical sections. Or inversely, a single-threaded program that requires one second of CPU time can reach a fraction of that time if rewritten as a multi-threaded program, but every additional core yields diminishing returns (see Figure \ref{fig:cpu_cores}). % TODO: Explain why, and explain and cite Amdahl's law
+All modern consumer CPUs have at least two physical cores, so the performance of a program is can sometimes be over twice as slow as its potential if it doesn't utilise multiple threads effectively in its performance-critical sections. Or inversely, a single-threaded program that requires one second of CPU time can reach a fraction of that time if rewritten as a multi-threaded program, but every additional core yields diminishing returns (see Figure \ref{fig:cpu_cores}). This illustrates Amdahl's Law, 
+
+\begin{center}
+\begin{Large}
+$speedup(s) = \frac{1}{(1-p)+\frac{p}{s}}$
+\end{Large}
+\end{center}
+
+Where $speedup$ is the theoretical, overall speed increase of the entire task, $s$ is the speed increase of the part of the that is improved by better system resources (CPU core count in our case), and $p$ is the original proportion of execution time that the improved part of the task occupied. % TODO: Explain why, and explain and cite Amdahl's law
+
+In the best case when $p = 1$,
 
 \section{Literature Review}
 
