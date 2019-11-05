@@ -308,42 +308,43 @@ namespace graphics {
 		return 0;
 	}
 
-	void buildVertexBuffer(
+	void buildVertexBuffers(
 		uint32_t particleCount, uint8_t componentCount, float *componentPtrs[],
-		VkBuffer *vertexBuffer, VkDeviceMemory *vertexBufferMemory) {
-		
+		vector<VkBuffer> *vertexBuffers, vector<VkDeviceMemory> *vertexBufferMemSlots) {
+
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(float) * particleCount * componentCount;
+		bufferInfo.size = sizeof(float) * particleCount;
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		auto result = vkCreateBuffer(device, &bufferInfo, nullptr, vertexBuffer);
-		SDL_assert(result == VK_SUCCESS);
-
-		VkMemoryRequirements memoryReqs;
-		vkGetBufferMemoryRequirements(device, *vertexBuffer, &memoryReqs);
-
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memoryReqs.size;
-		allocInfo.memoryTypeIndex = findMemoryType(memoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-		result = vkAllocateMemory(device, &allocInfo, nullptr, vertexBufferMemory);
-		SDL_assert(result == VK_SUCCESS);
-		result = vkBindBufferMemory(device, *vertexBuffer, *vertexBufferMemory, 0);
-		SDL_assert(result == VK_SUCCESS);
-
-		uint8_t * data;
-		vkMapMemory(device, *vertexBufferMemory, 0, bufferInfo.size, 0, (void**)&data);
-
-		uint32_t bytesPerComponentArray = bufferInfo.size / componentCount;
 		for (int c = 0; c < componentCount; c++) {
-			printf("%i\n", c);
-			memcpy(&data[c * bytesPerComponentArray], componentPtrs[c], bytesPerComponentArray);
+			vertexBuffers->push_back(VkBuffer());
+			auto result = vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffers->back());
+			SDL_assert(result == VK_SUCCESS);
+
+			VkMemoryRequirements memoryReqs;
+			vkGetBufferMemoryRequirements(device, vertexBuffers->back(), &memoryReqs);
+
+			VkMemoryAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			allocInfo.allocationSize = memoryReqs.size;
+			allocInfo.memoryTypeIndex = findMemoryType(
+				memoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			vertexBufferMemSlots->push_back(VkDeviceMemory());
+			result = vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemSlots->back());
+			SDL_assert(result == VK_SUCCESS);
+			result = vkBindBufferMemory(device, vertexBuffers->back(), vertexBufferMemSlots->back(), 0);
+			SDL_assert(result == VK_SUCCESS);
+
+			uint8_t * mappedMemory;
+			vkMapMemory(device, vertexBufferMemSlots->back(), 0, bufferInfo.size, 0, (void**)&mappedMemory);
+			
+			memcpy(mappedMemory, componentPtrs[c], bufferInfo.size);
+			vkUnmapMemory(device, vertexBufferMemSlots->back());
 		}
 		
-		vkUnmapMemory(device, *vertexBufferMemory);
 	}
 
 	void buildPipeline(
@@ -498,7 +499,12 @@ namespace graphics {
 		return commandPool;
 	}
 
-	void buildCommandBuffers(VkCommandPool commandPool, VkBuffer vertexBuffer, uint32_t vertexCount, vector<VkCommandBuffer> *commandBuffersOut) {
+	void buildCommandBuffers(
+		VkCommandPool commandPool,
+		vector<VkBuffer> vertexBuffers,
+		uint32_t vertexCount,
+		vector<VkCommandBuffer> *commandBuffersOut) {
+
 		commandBuffersOut->resize(framebuffers.size());
 
 		VkCommandBufferAllocateInfo bufferInfo = {};
@@ -509,11 +515,25 @@ namespace graphics {
 		auto result = vkAllocateCommandBuffers(device, &bufferInfo, commandBuffersOut->data());
 		SDL_assert(result == VK_SUCCESS);
 
+		vector<VkClearValue> clearValues;
+
+		// Color clear value
+		clearValues.push_back(VkClearValue());
+		clearValues.back().color = { 0, 0, 0, 1 };
+		clearValues.back().depthStencil = {};
+
+		if (enableDepthTesting) {
+			// Depth/stencil clear value
+			clearValues.push_back(VkClearValue());
+			clearValues.back().color = {};
+			clearValues.back().depthStencil = { 1, 0 };
+		}
+
 		for (int i = 0; i < commandBuffersOut->size(); i++) {
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0; // TODO: optimisation possible?
-			beginInfo.pInheritanceInfo = nullptr; // TODO: for secondary buffers
+			beginInfo.pInheritanceInfo = nullptr;
 			result = vkBeginCommandBuffer((*commandBuffersOut)[i], &beginInfo);
 			SDL_assert(result == VK_SUCCESS);
 
@@ -522,20 +542,6 @@ namespace graphics {
 			renderPassInfo.renderPass = renderPass;
 			renderPassInfo.framebuffer = framebuffers[i];
 
-			vector<VkClearValue> clearValues;
-
-			// Color clear value
-			clearValues.push_back(VkClearValue());
-			clearValues.back().color = { 0, 0, 0, 1 };
-			clearValues.back().depthStencil = {};
-
-			if (enableDepthTesting) {
-				// Depth/stencil clear value
-				clearValues.push_back(VkClearValue());
-				clearValues.back().color = {};
-				clearValues.back().depthStencil = { 1, 0 };
-			}
-
 			renderPassInfo.clearValueCount = (uint32_t)clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
@@ -543,17 +549,10 @@ namespace graphics {
 			renderPassInfo.renderArea.extent = extent;
 
 			vkCmdBeginRenderPass((*commandBuffersOut)[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-			clearValues.resize(0);
 			vkCmdBindPipeline((*commandBuffersOut)[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-			VkDeviceSize offsets[] = { 0 };
-
-			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
-			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
-			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
-			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
-			// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
-			vkCmdBindVertexBuffers((*commandBuffersOut)[i], 0, 1, &vertexBuffer, offsets);
+			vector<VkDeviceSize> offsets = {0,0,0,0};
+			vkCmdBindVertexBuffers((*commandBuffersOut)[i], 0, (uint32_t)vertexBuffers.size(), vertexBuffers.data(), offsets.data());
 
 			vkCmdDraw((*commandBuffersOut)[i], vertexCount, 1, 0, 0);
 
@@ -562,6 +561,8 @@ namespace graphics {
 			result = vkEndCommandBuffer((*commandBuffersOut)[i]);
 			SDL_assert(result == VK_SUCCESS);
 		}
+
+		clearValues.resize(0);
 	}
 	
 	VkCommandBuffer buildAndBeginDepthTestingCommandBuffer(VkCommandPool commandPool) {
@@ -890,21 +891,19 @@ namespace graphics {
 	}
 
 	// Ephemeral render buffers
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+	vector<VkBuffer> vertexBuffers;
+	vector<VkDeviceMemory> vertexBufferMemSlots;
 	vector<VkCommandBuffer> commandBuffers;
 
 	void freeRenderBuffers() {
 		vkFreeCommandBuffers(device, commandPool, (uint32_t)commandBuffers.size(), commandBuffers.data());
 		commandBuffers.resize(0);
 
-		//for (auto &buffer : vertexBuffers) vkDestroyBuffer(device, buffer, nullptr);
-		//vertexBuffers.resize(0);
-		vkDestroyBuffer(device, vertexBuffer, nullptr);
-		vertexBuffer = VK_NULL_HANDLE;
+		for (auto &buffer : vertexBuffers) vkDestroyBuffer(device, buffer, nullptr);
+		vertexBuffers.resize(0);
 
-		vkFreeMemory(device, vertexBufferMemory, nullptr);
-		vertexBufferMemory = VK_NULL_HANDLE;
+		for (auto &slot : vertexBufferMemSlots) vkFreeMemory(device, slot, nullptr);
+		vertexBufferMemSlots.resize(0);
 	}
 
 	void render(uint32_t particleCount, uint8_t componentCount, float *componentPtrs[]) {
@@ -916,8 +915,8 @@ namespace graphics {
 			freeRenderBuffers();
 		}
 
-		buildVertexBuffer(particleCount, componentCount, componentPtrs, &vertexBuffer, &vertexBufferMemory);
-		buildCommandBuffers(commandPool, vertexBuffer, particleCount, &commandBuffers);
+		buildVertexBuffers(particleCount, componentCount, componentPtrs, &vertexBuffers, &vertexBufferMemSlots);
+		buildCommandBuffers(commandPool, vertexBuffers, particleCount, &commandBuffers);
 
 		// Submit commands
 		uint32_t swapchainImageIndex = INT32_MAX;
