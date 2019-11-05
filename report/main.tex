@@ -131,41 +131,7 @@ Coordination between threads is a necessary characteristic of reliable multi-thr
 
 \textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. The thread now "owns" the mutex. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex (only the owning thread can unlock a mutex). The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex instead of \verb|lock()|; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| \citep{CppMutex}.
 
-% Paragraph code example
-\begin{figure}[h]
-\begin{minted}[fontsize=\small]{javascript}
-boost::semaphore onUpdateStart(0);
-boost::semaphore onUpdateComplete(0);
 
-function initialise() {
-  for i in updaterThreadCount {
-    spawnThread(updaterThread);
-  }
-}
-
-function updaterThread() {
-	while true {
-		onUpdateStart.wait();
-		updateParticleRange();
-		onUpdateComplete.post();
-	}
-}
-
-function updateAllParticles() {
-	onUpdateComplete = semaphore(updaterThreadCount);
-	
-  for i in updaterThreadCount {
-    onUpdateStart.post();
-  }
-  
-  onUpdateComplete.wait();
-}
-\end{minted}
-\caption{Pseudo-code that updates particles in parallel without recreating threads, synchronised using dual semaphores.}
-\label{fig:semaphore_pseudo}
-\end{figure}
-
-Figure \ref{fig:semaphore_pseudo} shows how this is implemented: When \verb|updateAllParticles()| is called on the main thread, it will wait and the \verb|updaterThread|s will each update their own particle ranges. When they are all done, they will notify \verb|updateAllParticles()| on the main thread, which will return. The \verb|updaterThread|s will wait for the next update at the top of their \verb|while| loops, and the main thread is then free to render the newly-updated particles.
 
 
 
@@ -214,6 +180,55 @@ We will be designing, profiling and optimising the program for a desktop compute
 % (Describe in detail all the optimisation techniques I implemented and the changes in the performance characteristics of the program as I make changes to the code. Describe the critical thought processes along the way. Describe the complexity and other difficulties of implementing each optimisation. Towards the end of this section, focus on analysis including comparisons of related optimisations performed. Include charts showing how performance scales with the amount of particles. Include diagrams showing data pipelines.)
 
 % "At this point" depth testing was implemented. This highlighted that the existing code for updating particles was based on the assumption that particles should move closer to the screen by increasing their position.z variable. However, a convention in depth testing of "lower values mean closer to the screen, and therefore less depth" is more intuitive, so changes were made to the particle system and the vertex shader to flip the usage of the Z axis. Implementing depth-testing and flipping the Z axis did not result in a noticeable change in performance.
+
+\subsection{,multithread}
+
+\subsection{,mutexless multithread, non-blocking-ish}
+
+\subsection{,const ref}
+
+\subsection{,no thread recreation}
+
+\begin{figure}[h]
+\begin{minted}[fontsize=\small]{javascript}
+boost::semaphore onUpdateStart(0);
+boost::semaphore onUpdateComplete(0);
+
+function initialise() {
+  for i in updaterThreadCount {
+    spawnThread(updaterThread);
+  }
+}
+
+function updaterThread() {
+  while true {
+    onUpdateStart.wait();
+    updateParticleRange();
+    onUpdateComplete.post();
+  }
+}
+
+function updateAllParticles() {
+  onUpdateComplete = semaphore(updaterThreadCount);
+  
+  for i in updaterThreadCount {
+    onUpdateStart.post();
+  }
+  
+  onUpdateComplete.wait();
+}
+\end{minted}
+\caption{Pseudo-code that updates particles in parallel without recreating threads, synchronised using dual semaphores.}
+\label{fig:semaphore_pseudo}
+\end{figure}
+
+Figure \ref{fig:semaphore_pseudo} shows how this is implemented: When \verb|updateAllParticles()| is called on the main thread, it will wait and the \verb|updaterThread|s will each update their own particle ranges. When they are all done, they will notify \verb|updateAllParticles()| on the main thread, which will return. The \verb|updaterThread|s will wait for the next update at the top of their \verb|while| loops, and the main thread is then free to render the newly-updated particles.
+
+\subsection{,simd}
+
+\subsection{,render task order (queue wait)}
+
+\subsection{,better gpu transfer}
 
 \section{Conclusion}
 
