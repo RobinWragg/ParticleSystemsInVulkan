@@ -2,7 +2,7 @@
 abstract = {Multi-threaded programs are pervasive, yet difficult to write. Missing proper synchronization leads to correctness bugs and over synchronization leads to performance problems. To improve the correctness and efficiency of multi-threaded software, we need a better understanding of synchronization challenges faced by real-world developers. This paper studies the code repositories of open-source multi-threaded software projects to obtain a broad and in- depth view of how developers handle synchronizations. We first examine how critical sections are changed when software evolves by checking over 250,000 revisions of four representative open-source software projects. The findings help us answer questions like how often synchronization is an afterthought for developers; whether it is difficult for devel- opers to decide critical section boundaries and lock variables; and what are real-world over-synchronization problems. We then conduct case studies to better understand (1) how critical sections are changed to solve performance prob- lems (i.e. over-synchronization issues) and (2) how soft- ware changes lead to synchronization-related correctness problems (i.e. concurrency bugs). This in-depth study shows that tool support is needed to help developers tackle over-synchronization problems; it also shows that concur- rency bug avoidance, detection, and testing can be improved through better awareness of code revision history.},
 author = {Gu, Rui and Jin, Guoliang and Song, Linhai and Zhu, Linjie and Lu, Shan},
 doi = {10.1145/2786805.2786815},
-file = {:Users/robin/Desktop/p426-gu.pdf:pdf},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Gu et al. - 2015 - What change history tells us about thread synchronization.pdf:pdf},
 isbn = {9781450336758},
 journal = {2015 10th Joint Meeting of the European Software Engineering Conference and the ACM SIGSOFT Symposium on the Foundations of Software Engineering, ESEC/FSE 2015 - Proceedings},
 keywords = {Concurrency bugs,Empirical study,Locks,Multi-threaded software,Performance bugs,Repository mining},
@@ -18,6 +18,17 @@ keywords = {Compare-and-Swap,Load-Linked,Lower bounds,Store-Conditional,Synchron
 title = {{On the inherent weakness of conditional synchronization primitives}},
 year = {2004}
 }
+@article{Pinheiro2011,
+abstract = {In this tutorial we intend to cover one of the innovations brought by DirectX11. Previous versions of DirectX didn't support native multithreading and most part of the API was not thread-safe. The user needed to add mutexes in the code to avoid race conditions in order to support a multi-threaded renderer. Moreover, the lack of native support wouldn't properly manage the swap of render states by multiple threads. This kind of guarantee can also be an application requirement. With the support of Deferred Contexts in DirectX11 the game engine can properly avoid the overhead on the submission thread being the bottleneck of the application. One may now queue API calls through command lists and multiple threads to be executed later. The API is now responsible for inter-thread synchronization for final submission to the GPU. The main goal behind multithreading is to use every cycle of CPU and GPU without making the GPU wait, which impacts the game frame rate. The full improvements set of DirectX 11 will be showed briefly, then the explanation of why states of the API must be synchronized for a proper rendering will follow. A considerable part of the course will explain how to use the Deferred Contexts and how to properly build command lists for later submission. The focus will be in the comparison to previous APIs, highlighting the issues of the previous versions that the new DirectX11 improvements had arisen from. Then we present some samples of code and cases that would have good performance improvements with the adoption of Deferred Contexts. During the samples exhibition, the important parts of the code should be discussed briefly at a high level of abstraction in order to give some consistency to the knowledge of the audience. This tutorial is a sequence of SBGames 2010 course entitled: "Un-derstanding Shader Model 5.0 with DirectX11" [Valdetaro et al. 2010]. In that tutorial we presented other set of innovations brought by DirectX11, which is the Tessellator pipeline.},
+author = {Pinheiro, Rodrigo B and Valdetaro, Alexandre and Nunes, Gustavo B and Feijo, Bruno and Raposo, Alberto},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Pinheiro et al. - Unknown - Introduction to Multithreaded rendering and the usage of Deferred Contexts in DirectX 11.pdf:pdf},
+journal = {Pontificia Universidade Catolica},
+keywords = {Deferred Context,DirectX 11,Imme-diate Context,Multithreaded,Shader Model 5},
+pages = {1--5},
+title = {{Introduction to Multithreaded rendering and the usage of Deferred Contexts in DirectX 11 Threading Differences between DirectX}},
+url = {http://www.tecgraf.puc-rio.br/{~}abraposo/pubs/SBGames2011/SBGames2011{\_}Tutorial.pdf},
+year = {2011}
+}
 @inproceedings{Sampson2017,
 abstract = {From windowing systems to virtual reality, real-time graphics code is ubiquitous. Programming models for constructing graphics software, however, have largely escaped the attention of programming languages researchers. This essay introduces the programming model of OpenGL, a ubiquitous API for real-time graphics applications, for a language-oriented audience. It highlights six broad problems with the programming model and connects them to traditions in PL research. The issues range from classic pitfalls, where established thinking can apply, to new open problems, where novel research is needed.},
 author = {Sampson, Adrian},
@@ -32,6 +43,26 @@ publisher = {Schloss Dagstuhl- Leibniz-Zentrum fur Informatik GmbH, Dagstuhl Pub
 title = {{Let's fix openGL}},
 volume = {71},
 year = {2017}
+}
+@phdthesis{evalMultiThreadVulkan,
+author = {Blackert, Axel},
+booktitle = {Department of Electrical Engineering},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Blackert - Unknown - Evaluation of multi-threading in Vulkan.pdf:pdf},
+school = {Link{\"{o}}ping University},
+title = {{Evaluation of multi-threading in Vulkan}},
+year = {2016}
+}
+@book{Yu2013,
+author = {Yu, Hongtao and Ko, Hou Jen and Li, Zhiyuan},
+booktitle = {Proceedings of the ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI)},
+doi = {10.1145/2462156.2462182},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Boehm, Association for Computing Machinery. - 2013 - General Data Structure Expansion for Multi-threading.pdf:pdf},
+isbn = {9781450320146},
+keywords = {Multithreading,Parallelization,Privatization},
+pages = {243--252},
+publisher = {ACM},
+title = {{General data structure expansion for multi-threading}},
+year = {2013}
 }
 @inproceedings{Penney2015,
 author = {Penney, Devon and Zafar, Nafees Bin},
@@ -138,19 +169,6 @@ pages = {57--60},
 title = {{Cartoon rendering of smoke animations}},
 year = {2004}
 }
-@article{Hastings2007,
-abstract = {Particle systems are a representation, computation, and rendering method for special effects such as fire, smoke, explosions, electricity, water, magic, and many other phenomena. This paper presents NEAT particles, a new design, representation, and animation method for particle systems tailored to real-time effects in video games and simulations. In NEAT particles, the neuroevolution of augmenting topologies (NEAT) method evolves artificial neural networks (ANN) that control the appearance and motion of particles. NEAT particles affords three primary advantages over traditional particle effect development methods. First, it decouples the creation of new particle effects from mathematics and programming, enabling users with little knowledge of either to produce complex effects. Second, it allows content designers to evolve a broader range of effects than typical development tools through a form of interactive evolutionary computation (IEC). And finally, it acts as a concept generator, allowing users to interactively explore the space of possible effects. In the future such a system may allow content to be evolved in the game itself, as it is played},
-author = {Hastings, Erin and Guha, Ratan and Stanley, Kenneth O.},
-doi = {10.1109/CIG.2007.368092},
-file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Hastings, Guha, Stanley - 2007 - NEAT particles Design, representation, and animation of particle system effects.pdf:pdf},
-isbn = {1424407095},
-journal = {Proceedings of the 2007 IEEE Symposium on Computational Intelligence and Games, CIG 2007},
-keywords = {IEC,Interactive evolutionary computation,NEAT,NeuroEvolution of augmenting topologies,Particle systems},
-number = {1},
-pages = {154--160},
-title = {{NEAT particles: Design, representation, and animation of particle system effects}},
-year = {2007}
-}
 @article{McGuire2006,
 abstract = {We describe an algorithm for rendering animated smoke particle systems in a cartoon style. This style includes outlines and cel- shading. For efficient self-shadowing effects, we introduce nailboard shadow volumes that create complex shadows from few polygons. Including shadows, the renderer draws only three polygons per particle and entirely avoids the latency of depth buffer readback. We combine the renderer with a fast simulator that generates the phenomenology of real smoke but has artistically controllable parameters. Together they produces real-time interactive smoke animations at over 30 fps. Thus our algorithm is well-suited to applications where interactive performance and expressive power are preferred to realism; for example, video games and rapid development of animation.},
 author = {McGuire, Morgan and Fein, Andi},
@@ -164,6 +182,19 @@ pages = {21--26},
 title = {{Real-time rendering of cartoon smoke and clouds}},
 volume = {2006},
 year = {2006}
+}
+@article{Hastings2007,
+abstract = {Particle systems are a representation, computation, and rendering method for special effects such as fire, smoke, explosions, electricity, water, magic, and many other phenomena. This paper presents NEAT particles, a new design, representation, and animation method for particle systems tailored to real-time effects in video games and simulations. In NEAT particles, the neuroevolution of augmenting topologies (NEAT) method evolves artificial neural networks (ANN) that control the appearance and motion of particles. NEAT particles affords three primary advantages over traditional particle effect development methods. First, it decouples the creation of new particle effects from mathematics and programming, enabling users with little knowledge of either to produce complex effects. Second, it allows content designers to evolve a broader range of effects than typical development tools through a form of interactive evolutionary computation (IEC). And finally, it acts as a concept generator, allowing users to interactively explore the space of possible effects. In the future such a system may allow content to be evolved in the game itself, as it is played},
+author = {Hastings, Erin and Guha, Ratan and Stanley, Kenneth O.},
+doi = {10.1109/CIG.2007.368092},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Hastings, Guha, Stanley - 2007 - NEAT particles Design, representation, and animation of particle system effects.pdf:pdf},
+isbn = {1424407095},
+journal = {Proceedings of the 2007 IEEE Symposium on Computational Intelligence and Games, CIG 2007},
+keywords = {IEC,Interactive evolutionary computation,NEAT,NeuroEvolution of augmenting topologies,Particle systems},
+number = {1},
+pages = {154--160},
+title = {{NEAT particles: Design, representation, and animation of particle system effects}},
+year = {2007}
 }
 @article{Burg2000,
 author = {Burg, J Van Der},
@@ -245,6 +276,16 @@ title = {{Piko: A framework for authoring programmable graphics pipelines}},
 volume = {34},
 year = {2015}
 }
+@article{Zhang2018,
+author = {Zhang, Alex and Chen, Kan and Johan, Henry and Erdt, Marius},
+doi = {10.1145/3283289.3283342},
+file = {:Users/robin/Desktop/High performance city rendering in Vulkan.pdf:pdf;:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Zhang et al. - 2018 - High performance city rendering in Vulkan.pdf:pdf},
+isbn = {9781450360630},
+keywords = {acm reference format,massive rendering,texture streaming,vulkan},
+pages = {1--2},
+title = {{High performance city rendering in Vulkan}},
+year = {2018}
+}
 @article{Miller1989,
 abstract = {Connected particle systems can depict many objects difficult to model in any other fashion. We present a method for animating viscous fluids by simulating the forces of such particles interacting with each other. This method allows for collision detection between the particles and obstacles, both stationary and mobile, and it allows solid objects to break and melt. An approximate method for covering the particles with an isosurface for efficient rendering is also presented. {\textcopyright} 1989.},
 author = {Miller, Gavin and Pearce, Andrew},
@@ -299,12 +340,31 @@ title = {{Rapid, stable fluid dynamics for computer graphics}},
 volume = {24},
 year = {1990}
 }
-@article{Powell,
-author = {Powell, M L and Kleiman, S R and Barton, S and Shah, D and Stein, D and Weeks, M},
-file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Powell et al. - 1991 - SunOS Multi-thread Architecture.pdf:pdf},
-pages = {1--14},
-title = {{SunOS Multi-thread Architecture}},
-year = {1991}
+@article{Hill2017,
+abstract = {The authors of a 2008 Computer article reflect on their corollaries to Amdahl's law almost 10 years later.},
+author = {Hill, Mark D. and Marty, Michael R.},
+doi = {10.1109/MC.2017.164},
+file = {:Users/robin/Desktop/ieeecomputer08{\_}amdahl{\_}multicore.pdf:pdf},
+issn = {00189162},
+journal = {Computer},
+keywords = {Amdahl's Law,From the Archives,hardware,history of computing,multicore,multicore chips,multiprocessors},
+number = {6},
+pages = {12--14},
+title = {{Amdahl's Law in the Multicore Era}},
+volume = {50},
+year = {2017}
+}
+@article{Rodgers1985,
+abstract = {The availability of high-performance, low-cost microprocessors has removed one of the obstacles to construction of multiprocessor systems which are cost-performance competitive from entry levels through large systems. Advances in understanding of computer structure and focus on multiprocessor design practices has removed the performance bottlenecks associated with multiprocessor systems of the past. Better understanding of multiprocessor scheduling and synchronization in the symmetric Pool Processor Architecture built on the portable base of the UNIX system interface has removed the obstacle to easy application of multiprocessors to single applications. Current research work has produced techniques and tools to facilitate and in some cases automate the decomposition of programs to into parallel execution streams. A computer is described which exploits the removal of these barriers. The Balance 8000 is a multimicrocomputer system based on the National Semiconductor Series 32000 microprocessor. It runs DYNIX, a version of UNIX bsd 4. 2, which exploits the power of from 2 to 12 coordinated microprocessors to achieve a range of performance which approaches the sum of the performance of the individual processors.},
+author = {Rodgers, David P.},
+doi = {10.1145/327070.327215},
+file = {:Users/robin/Desktop/p225-rodgers.pdf:pdf},
+isbn = {0818606347},
+issn = {01497111},
+journal = {Conference Proceedings - Annual Symposium on Computer Architecture},
+pages = {225--231},
+title = {{Improvements in Multiprocessor System Design}},
+year = {1985}
 }
 @article{Tatarchuk2006,
 abstract = {In this chapter we will cover approaches for creating visually complex, rich interactive environments as a case study of developing the world of ATI “ToyShop” demo. We will discuss the constraints for developing large immersive worlds in real-time, and go over the considerations for developing lighting environments for such scene rendering. Rain- specific effects in city environments will be presented. We will overview the lightning system used to create illumination from the lightning flashes, the high dynamic range rendering techniques used, various approaches for rendering rain effects and dynamic water simulation on the GPU. Methods for rendering reflections in real-time will be illustrated. Additionally, a number of specific material shaders for enhancing the feel of the rainy urban environment will be examined.},
@@ -316,6 +376,33 @@ journal = {SIGGRAPH 2006 - ACM SIGGRAPH 2006 Courses},
 pages = {23--64},
 title = {{Artist-directable real-time rain rendering in city environments}},
 year = {2006}
+}
+@article{Agarwal2006,
+author = {Agarwal, Rahul and Stoller, Scott D},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Agarwal, Stoller - 2006 - Run-Time Detection of Potential Deadlocks for Programs with Locks, Semaphores, and Condition Variables.pdf:pdf},
+isbn = {1595932631},
+journal = {Science},
+keywords = {concurrent programs,deadlocks,reliability,testing},
+title = {{Run-Time Detection of Potential Deadlocks for Programs with Locks, Semaphores, and Condition Variables}},
+year = {2006}
+}
+@article{Sarkar1988,
+author = {Sarkar, Vivek},
+doi = {10.1145/55364.55426},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Sarkar - 1988 - Synchronization Using Counting Semaphores.pdf:pdf},
+isbn = {0897912721},
+journal = {Proceedings of the International Conference on Supercomputing},
+pages = {627--637},
+title = {{Synchronization Using Counting Semaphores}},
+volume = {Part F1301},
+year = {1988}
+}
+@article{Powell,
+author = {Powell, M L and Kleiman, S R and Barton, S and Shah, D and Stein, D and Weeks, M},
+file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Powell et al. - 1991 - SunOS Multi-thread Architecture.pdf:pdf},
+pages = {1--14},
+title = {{SunOS Multi-thread Architecture}},
+year = {1991}
 }
 @article{Crawford2018,
 abstract = {For real-time graphics applications such as games and virtual reality, performance is crucial to provide a smooth user experience. Central to this is the performance of shader programs which render images on the GPU. The rise of low-level graphics APIs such as Vulkan means compilation tools play an increasingly important role in the graphics ecosystem. However, despite the importance of graphics, there is little published work on the impact of compiler optimization. This paper explores common features of graphics shaders, and examines the impact and applicability of common optimizations such as loop unrolling, and arithmetic reassociation. Combinations of optimizations are evaluated via exhaustive search across a wide set of shaders from the GFXBench 4.0 benchmark suite. Their impact is assessed across three desktop and two mobile GPUs from different vendors. We show that compiler optimization can have significant positive and negative impacts which vary across optimisations, benchmarks and platforms.},
@@ -504,45 +591,4 @@ pages = {1--27},
 title = {{Particle Graphics on Reconfigurable Hardware}},
 volume = {1},
 year = {2008}
-}
-@phdthesis{evalMultiThreadVulkan,
-author = {Blackert, Axel},
-booktitle = {Department of Electrical Engineering},
-file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Blackert - Unknown - Evaluation of multi-threading in Vulkan.pdf:pdf},
-school = {Link{\"{o}}ping University},
-title = {{Evaluation of multi-threading in Vulkan}},
-year = {2016}
-}
-@book{Yu2013,
-author = {Yu, Hongtao and Ko, Hou Jen and Li, Zhiyuan},
-booktitle = {Proceedings of the ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI)},
-doi = {10.1145/2462156.2462182},
-file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Boehm, Association for Computing Machinery. - 2013 - General Data Structure Expansion for Multi-threading.pdf:pdf},
-isbn = {9781450320146},
-keywords = {Multithreading,Parallelization,Privatization},
-pages = {243--252},
-publisher = {ACM},
-title = {{General data structure expansion for multi-threading}},
-year = {2013}
-}
-@article{Pinheiro2011,
-abstract = {In this tutorial we intend to cover one of the innovations brought by DirectX11. Previous versions of DirectX didn't support native multithreading and most part of the API was not thread-safe. The user needed to add mutexes in the code to avoid race conditions in order to support a multi-threaded renderer. Moreover, the lack of native support wouldn't properly manage the swap of render states by multiple threads. This kind of guarantee can also be an application requirement. With the support of Deferred Contexts in DirectX11 the game engine can properly avoid the overhead on the submission thread being the bottleneck of the application. One may now queue API calls through command lists and multiple threads to be executed later. The API is now responsible for inter-thread synchronization for final submission to the GPU. The main goal behind multithreading is to use every cycle of CPU and GPU without making the GPU wait, which impacts the game frame rate. The full improvements set of DirectX 11 will be showed briefly, then the explanation of why states of the API must be synchronized for a proper rendering will follow. A considerable part of the course will explain how to use the Deferred Contexts and how to properly build command lists for later submission. The focus will be in the comparison to previous APIs, highlighting the issues of the previous versions that the new DirectX11 improvements had arisen from. Then we present some samples of code and cases that would have good performance improvements with the adoption of Deferred Contexts. During the samples exhibition, the important parts of the code should be discussed briefly at a high level of abstraction in order to give some consistency to the knowledge of the audience. This tutorial is a sequence of SBGames 2010 course entitled: "Un-derstanding Shader Model 5.0 with DirectX11" [Valdetaro et al. 2010]. In that tutorial we presented other set of innovations brought by DirectX11, which is the Tessellator pipeline.},
-author = {Pinheiro, Rodrigo B and Valdetaro, Alexandre and Nunes, Gustavo B and Feijo, Bruno and Raposo, Alberto},
-file = {:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Pinheiro et al. - Unknown - Introduction to Multithreaded rendering and the usage of Deferred Contexts in DirectX 11.pdf:pdf},
-journal = {Pontificia Universidade Catolica},
-keywords = {Deferred Context,DirectX 11,Imme-diate Context,Multithreaded,Shader Model 5},
-pages = {1--5},
-title = {{Introduction to Multithreaded rendering and the usage of Deferred Contexts in DirectX 11 Threading Differences between DirectX}},
-url = {http://www.tecgraf.puc-rio.br/{~}abraposo/pubs/SBGames2011/SBGames2011{\_}Tutorial.pdf},
-year = {2011}
-}
-@article{Zhang2018,
-author = {Zhang, Alex and Chen, Kan and Johan, Henry and Erdt, Marius},
-doi = {10.1145/3283289.3283342},
-file = {:Users/robin/Desktop/High performance city rendering in Vulkan.pdf:pdf;:Users/robin/Library/Application Support/Mendeley Desktop/Downloaded/Zhang et al. - 2018 - High performance city rendering in Vulkan.pdf:pdf},
-isbn = {9781450360630},
-keywords = {acm reference format,massive rendering,texture streaming,vulkan},
-pages = {1--2},
-title = {{High performance city rendering in Vulkan}},
-year = {2018}
 }
