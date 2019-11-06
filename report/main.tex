@@ -86,9 +86,25 @@ A particle system containing trillions of particles is generally not viable unle
 
 \subsection{Real-time Graphics Pipelines}
 
-(framerates, 24fps, 30fps, 60fps, 90+fps and why)
-(todo)
-(different coordinate spaces)
+The many GPU-bound data conversions that take place every frame to produce a rendered image from meshes, vectors and matrices is known as a \emph{graphics pipeline}. In early versions of graphics APIs and hardware, this pipeline could not be modified by the programmer, and was called a \emph{fixed-function} pipeline.
+
+Increasingly over the years, flexible technologies such as \emph{programmable shaders}, code that runs on the GPU, were introduced. Modern graphics pipelines are highly customisable; stages in the pipeline can be added and removed, and different kinds of shaders were made available for graphics programmers to write. Many stages and shaders are common across different pipelines, since all graphics pipelines have a similar job to do, and a common implementation of a simple pipeline will be discussed here.
+
+\textbf{Vertex Input Assembly} is the initial stage, in which data is transferred to the GPU. The majority of this data is the vertices themselves, which are primarily 3D vectors in world-space, in sets of three which represent the corners of a triangle, the simplest possible shape that has area; this is the minimum requirement for rendering surfaces. In addition to world-space vectors, each vertex may have a variety of other data associated with it. This is called \emph{per-vertex data} or \emph{vertex attributes}. Some examples are vertex colours, texture coordinates and pre-computed surface normals. Since this stage represents the boundary between the CPU and GPU, data is transferred in large, contiguous chunks, rather than one vertex or triangle at a time, for efficiency.
+
+How this data should be interpreted by the GPU also needs to be specified at this stage; A chunk of data may have the corners of triangles laid out in memory as xyzxyzxyzxyzxyzxyzxyz... (\emph{Structure-of-Arrays} or \emph{interleaved format}), or xxxxyyyyzzzzxxxyyyyzzzz... (\emph{Array-of-Structures-of-Arrays}). These details need to be communicated to the GPU at this stage. A complete explanation and demonstration of this is given later in the paper, when SIMD is implemented in section \ref{sec:simd}.
+
+Along with the per-vertex data, \emph{modelview} and \emph{projection} matrices for transforming the vertices into \emph{normalised-device-space} are commonly transferred to the GPU, however these transformations are not used in this project; all coordinates on the CPU are in normalised-device-space for simplicity.
+
+The \textbf{Vertex Shader} is the next stage. It is a customisable program that operates on a single vertex at a time. Like all shaders, many instances of the program are running simultaneously to enable fast throughput. The vertex shader involves the actual transformation from world-space to normalised-device-space; the latter is a three-dimensional coordinate system in which each axis extends from -1 to +1. This space makes the pipeline more efficient as anything outside of this range can be discarded before rasterisation.
+
+Many other operations can be performed in the vertex shader, and it can be advantageous to move work from the fragment shader later in the pipeline into the vertex shader where possible (\emph{e.g.} per-vertex lighting vs. per-fragment lighting), since there are many more generated fragments than there are vertices, making per-fragment operations more time-consuming.
+
+\textbf{Rasterisation} follows the vertex shader. This is where anything outside of normalised-device-space is discarded. Triangles and other primitives are converted into \emph{fragments}, discrete data in pixel-space. The fragments of primitives that are hidden behind other primitives are discarded here in a process known as \emph{depth-testing}.
+
+\textbf{Fragment Shader}
+
+\textbf{Colour Blending}
 
 \subsection{The Vulkan API}
 
@@ -246,7 +262,9 @@ function updateAllParticles() {
 
 Figure \ref{fig:semaphore_pseudo} shows how this is implemented: When \verb|updateAllParticles()| is called on the main thread, it will wait and the \verb|updaterThread|s will each update their own particle ranges. When they are all done, they will notify \verb|updateAllParticles()| on the main thread, which will return. The \verb|updaterThread|s will wait for the next update at the top of their \verb|while| loops, and the main thread is then free to render the newly-updated particles.
 
-\subsection{,simd}
+\subsection{,simd} \label{sec:simd}
+
+,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as XYZXYZXYZ..., similar to a common left-right layout for audio samples, LRLRLRLR. But sometimes other memory layouts are used, such as XXXYYYZZZ.
 
 \subsection{,render task order (queue wait)}
 
