@@ -104,7 +104,7 @@ Many other operations can be performed in the vertex shader, and an beneficial o
 
 \textbf{Rasterisation} follows the vertex shader. This is where anything outside of normalised-device-space is discarded. Triangles are converted into \emph{fragments}, discrete data in pixel-space; device-space triangles are flattened to 2D and fragments are created based on whether the locations of pixels fall within those triangles.
 
-The fragments of triangles that are hidden behind others are discarded here in a process known as \emph{depth-testing}, which is a large topic in itself that involves the use of a depth buffer to record and compare each fragment's depth in the scene, in order to allow triangles to occlude each other properly without the rasteriser having to sort them by depth beforehand.
+The fragments of triangles that are hidden behind others are discarded here in a process known as \emph{depth-testing}, which involves the use of a depth buffer to record and compare each fragment's depth in the scene, in order to allow triangles to occlude and intersect each other correctly.
 
 interpolation
 
