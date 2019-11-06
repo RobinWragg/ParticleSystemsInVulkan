@@ -64,3 +64,11 @@ render task order
 300k: 4.42ms
 400k: 5.71ms
 500k: 6.42ms
+
+better GPU vertex transfer
+
+100k: 1.16ms
+200k: 1.90ms
+300k: 2.73ms
+400k: 3.64ms
+500k: 4.52ms
