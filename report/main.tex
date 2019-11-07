@@ -126,7 +126,7 @@ Vulkan is a cross-platform Application Programming Interface for rendering 3D gr
 
 \subsection{Multi-threading}
 
-Concurrent execution is the very common technique in modern computing of running multiple threads in a single program; the effect is equivalent to two or more processes with access to the same memory. This allows a CPU with multiple cores to run more than one of these threads at once. Amdahl's law \citep{Rodgers1985} shown below is a formula describing the theoretical speedup of a task when the system's resources are improved, such as when more CPU cores are added:
+Concurrent execution is the very common technique in modern computing of running multiple threads in a single program; the effect is equivalent to two or more processes with access to the same memory. This allows a CPU with multiple cores to run more than one of these threads at once. Amdahl's law or Amdahl's argument \citep{Rodgers1985} shown below is a formula describing the theoretical speedup of a task when the system's resources are improved, such as when more CPU cores are added:
 
 \begin{center}
 \begin{Large}
@@ -134,7 +134,7 @@ $speedup(s) = \frac{1}{(1-p)+\frac{p}{s}}$
 \end{Large}
 \end{center}
 
-Where $speedup$ is the overall speed increase of the entire task, $s$ is the speed increase of the part of the task that is improved by better system resources, and $p$ is the original proportion of execution time that the improved part of the task occupied. % TODO: Explain why, and explain and cite Amdahl's law
+Where $speedup$ is the overall speed increase of the entire task, $s$ is the speed increase of the part of the task that is improved by better system resources, and $p$ is the original proportion of execution time that the improved part of the task occupied.
 
 Amdahl's law in its most optimistic case is when $p = 1$, which greatly simplifies to $speedup(s) = s$. If we improve the system by adding more processing cores, we introduce $c$, the number of processing cores in the system: $speedup(s) = cs$. Since $c$ is a coefficient of $s$, every increment to $c$ will result in a continually diminishing increase in $speedup(s)$.
 
@@ -146,15 +146,19 @@ This means that a single-threaded task that requires a constant amount CPU time 
 \label{fig:cpu_cores}
 \end{figure}
 
-% TODO: cite amdahls law
-
 \section{Literature Review}
 
 % TODO: \subsection{Performance Profiling}?
 
 \subsection{Particle System Design}
-% TODO: show an image of Tatarchuk's work
-\citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes. The water would then splash into puddles using a pre-rendered splash sequence. The otherwise easy-to-spot repetitiveness of this splash was hidden by randomising the size and transparency of those particles, as well as flipping them horizontally. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the actual simulated falling speed of the droplets within the splash would be convincingly similar regardless of particle size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash. % TODO: Delve into this paper more?
+
+\citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes (see Figure \ref{fig:tatarchuk}). The water would then splash into puddles using a pre-rendered splash sequence. The otherwise easy-to-spot repetitiveness of this splash was hidden by randomising the size and transparency of those particles, as well as flipping them horizontally. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the actual simulated falling speed of the droplets within the splash would be convincingly similar regardless of particle size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash. % TODO: Delve into this paper more?
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{tatarchuk}
+\caption{Work by \citet{Tatarchuk2006} on various rain effects.}
+\label{fig:tatarchuk}
+\end{figure}
 
 \citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have real-time graphics in mind, this grid-based approach could be applied to particle-based rendering for situations where the intended effect requires particles to react to each other based on their proximity. (TODO: That's called spatial hashing!) Additionally, \citet{Boulianne2007} states ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' meaning this technique would likely be appropriate for rendering real-time particle systems and the parallel nature of GPUs.
 
@@ -194,7 +198,9 @@ Although the effects of thread-blocking can be a significant challenge to remove
 
 \section{Methodology}
 
-% After examining the literature, we decided on a [something] implementation based on the techniques of cite, cite, cite, and cite.
+A particle system will be built in C++17 and Vulkan 1.1 to resemble spraying water, similar to some of the drainpipe work done by \citet{Tatarchuk2006}. Vertical synchronisation, the option to synchronise the framerate with the vertical refresh rate of the monitor, will be turned off and the program will calculate the duration of the slowest frame out of every one hundred frames (the 99th percentile) and print it to the console. The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts.
+
+The individual functions of the program will be profiled using tools such as Visual Studio's performance analyzer \citep{VSPerfTools} in order to gain an understanding of which parts of the code could be improved. The program will be optimised in stages. At every stage, the performance will be re-examined, new plots will be produced, and the next optimisation steps will be researched and evaluated.
 
 \subsection{Equipment}
 
@@ -205,16 +211,26 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 % TODO: Talk about how we will profile it. Vulkan layers, Visual Studio's tools etc.
 
-\subsection{Performance Profiling}
-
-todo
-% (Discuss how I'll be using Vulkan's validation layers, Visual Studio's profiling tools, and concurrency visualisation tools such as RAD Game Tools' Telemetry. Talk about what I'll be looking for when using each tool, and their strengths and weaknesses. GPU profiling!)
-
 \section{The Initial Implementation}
 
 todo
 % (Describe the design decisions of the program before any optimisation is performed, and any Vulkan-specific implementation details relevant to the project.)
 % My implementation never requires reallocating particles! Brag! It also simplifies SOA so we don't need to do AOSOA!
+
+A Windows application was built in C++17, using SDL 2.0.10 (\citeyear{SDL2}) for window creation and frame duration calculation. GLM 0.9.9.6 (\citeyear{GLM}) was used to provide a 3D vector class and some mathematical functions.
+
+
+
+A Vulkan 1.1 graphics system was created that consumes an array of \verb|Particle| structures containing 3D positions and scalar brightness values as shown:
+
+\begin{minted}[fontsize=\small]{C++}
+struct Particle {
+  vec3 position;
+  float brightness;
+};
+\end{minted}
+
+This data 
 
 \section{Optimisation \& Analysis}
 
