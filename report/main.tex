@@ -282,11 +282,15 @@ This data
 
 \section{Optimisation \& Analysis}
 
+\subsection{,multithread and rng}
+
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
 \caption{(placeholder caption)}
 \label{fig:initial-rng-multithread}
 \end{figure}
+
+\subsection{,mutexless multithread, non-blocking-ish}
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
@@ -294,17 +298,7 @@ This data
 \label{fig:mutexes-rangedthreads}
 \end{figure}
 
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{nosimd-simdwic-simdwdirect}
-\caption{(placeholder caption)}
-\label{fig:nosimd-simdwic-simdwdirect}
-\end{figure}
-
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{nosimd-slowsimd}
-\caption{(placeholder caption)}
-\label{fig:nosimd-slowsimd}
-\end{figure}
+\subsection{,const ref}
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{pass-by-value-reference}
@@ -312,11 +306,33 @@ This data
 \label{fig:pass-by-value-reference}
 \end{figure}
 
+\subsection{,no thread recreation}
+
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{recreate-no-recreation}
 \caption{(placeholder caption)}
 \label{fig:recreate-no-recreation}
 \end{figure}
+
+\subsection{,simd w conversion}
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{nosimd-slowsimd}
+\caption{(placeholder caption)}
+\label{fig:nosimd-slowsimd}
+\end{figure}
+
+,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as XYZXYZXYZ..., similar to a common left-right layout for audio samples, LRLRLRLR. But sometimes other memory layouts are used, such as XXXYYYZZZ.
+
+\subsection{,simd w direct gpu transfer}
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{nosimd-simdwic-simdwdirect}
+\caption{(placeholder caption)}
+\label{fig:nosimd-simdwic-simdwdirect}
+\end{figure}
+
+\subsection{speedup pies}
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{speedup-pies}
@@ -329,21 +345,8 @@ todo
 
 % "At this point" depth testing was implemented. This highlighted that the existing code for updating particles was based on the assumption that particles should move closer to the screen by increasing their position.z variable. However, a convention in depth testing of "lower values mean closer to the screen, and therefore less depth" is more intuitive, so changes were made to the particle system and the vertex shader to flip the usage of the Z axis. Implementing depth-testing and flipping the Z axis did not result in a noticeable change in performance.
 
-\subsection{,multithread}
 
-todo
 
-\subsection{,mutexless multithread, non-blocking-ish}
-
-todo
-
-\subsection{,const ref}
-
-todo
-
-\subsection{,no thread recreation}
-
-todo
 
 \begin{figure}[h]
 \begin{minted}[fontsize=\footnotesize]{javascript}
@@ -380,9 +383,6 @@ function updateAllParticles() {
 
 Figure \ref{fig:semaphore_pseudo} shows how this is implemented: When \verb|updateAllParticles()| is called on the main thread, it will wait and the \verb|updaterThread|s will each update their own particle ranges. When they are all done, they will notify \verb|updateAllParticles()| on the main thread, which will return. The \verb|updaterThread|s will wait for the next update at the top of their \verb|while| loops, and the main thread is then free to render the newly-updated particles.
 
-\subsection{,simd} \label{sec:simd}
-
-,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as XYZXYZXYZ..., similar to a common left-right layout for audio samples, LRLRLRLR. But sometimes other memory layouts are used, such as XXXYYYZZZ.
 
 \subsection{,render task order (queue wait)}
 
