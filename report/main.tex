@@ -213,13 +213,12 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 \section{The Initial Implementation}
 
-todo
 % (Describe the design decisions of the program before any optimisation is performed, and any Vulkan-specific implementation details relevant to the project.)
 % My implementation never requires reallocating particles! Brag! It also simplifies SOA so we don't need to do AOSOA!
 
-A Windows application was built in C++17, using SDL 2.0.10 (\citeyear{SDL2}) for window creation and frame duration calculation. GLM 0.9.9.6 (\citeyear{GLM}) was used to provide a 3D vector class and some mathematical functions.
+A Windows application was built in C++17, using version 2.0.10 of the SDL library (\citeyear{SDL2}) for window creation and frame duration calculation. Version 0.9.9.6 of the GLM library (\citeyear{GLM}) was used to provide a 3D vector class and some functions for vector mathematics.
 
-
+A \verb|particles.cpp| file was created that 
 
 A Vulkan 1.1 graphics system was created that consumes an array of \verb|Particle| structures containing 3D positions and scalar brightness values as shown:
 
