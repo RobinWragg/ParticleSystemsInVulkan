@@ -92,25 +92,31 @@ In early versions of graphics APIs and hardware, this pipeline could not be modi
 
 In modern graphics software, pipelines are highly customisable; several stages in the pipeline can be added and removed even during the execution of the program, and more kinds of shaders were made available to graphics programmers, such as \emph{tessellation} and \emph{geometry} shaders. Despite this flexibility many stages and shaders are common across different pipelines as all graphics pipelines have a similar job to do. The most common stages will be discussed below in their order of execution.
 
-\textbf{Vertex Input Assembly} is the initial stage, in which data is transferred to the GPU. The majority of this data is the vertices themselves, which are usually 3D vectors in world-space, in sets of three which represent the corners of a triangle, the simplest possible shape that has area; this is the minimum requirement for rendering surfaces (points and lines can be rendered with fewer vertices, but we will only discuss triangles for now). In addition to world-space vectors, each vertex may have a variety of other data associated with it. This is called \emph{per-vertex data} or \emph{vertex attributes}. Some examples are vertex colours, texture coordinates and pre-computed surface normals. Since this stage represents the boundary between the CPU and GPU, data is transferred in large, contiguous blocks, rather than one vertex or triangle at a time, in order to mitigate the relatively slow communication due to the speed limit of electrons between two computer components that are often multiple inches apart, compared to \emph{e.g.} two cores in one CPU.
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{pipeline}
+\caption{A diagram of a basic graphics pipeline, simplified from the original image from \citet{PipelineImage}}
+\label{fig:pipeline}
+\end{figure}
 
-A block of per-vertex data may have the corners of triangles laid out in memory as xyzxyzxyzxyzxyzxyzxyz..., known as \emph{Structure-of-Arrays}, or xxxxyyyyzzzzxxxyyyyzzzz..., \emph{Array-of-Structures-of-Arrays}. These details need to be communicated to the GPU at this stage. A complete explanation and demonstration of this is given later in the paper, when SIMD is implemented in section \ref{sec:simd}.
+\textbf{Vertex Input Assembly} is the initial stage, in which data is transferred to the GPU. The majority of this data is the vertices themselves, which are 3D vectors in world-space. These are in sets of three which represent the corners of a triangle, the simplest possible shape that has area; this is the minimum requirement for rendering surfaces (points and lines can be rendered with fewer vertices, but we will only discuss triangles for now).
 
-Along with the per-vertex data, \emph{modelview} and \emph{projection} matrices for transforming the vertices into \emph{normalised-device-space} are commonly transferred to the GPU, however these transformations are not used in this project; all coordinates on the CPU are in normalised-device-space for simplicity.
+In addition to world-space vectors, each vertex may have a variety of other data associated with it. This is called \emph{per-vertex data} or \emph{vertex attributes}. Some examples are vertex colours, texture coordinates and pre-computed surface normals. Since this stage represents the boundary between the CPU and GPU, data is transferred in large, contiguous blocks, rather than one vertex or triangle at a time, in order to mitigate the relatively slow communication due to the speed limit of electrons between two computer components that are often multiple inches apart, compared to \emph{e.g.} two cores in one CPU.
+
+A block of per-vertex data may have the corners of triangles laid out in physical memory as xyz xyz xyz xyz xyz xyz xyz..., known as \emph{Structure-of-Arrays}, or xxxx yyyy zzzz xxx yyyy zzzz..., \emph{Array-of-Structures-of-Arrays}. These details need to be communicated to the GPU at this stage. A complete explanation and demonstration of this is given later in the paper, when SIMD is implemented in section \ref{sec:simd}.
+
+Along with the per-vertex data, \emph{modelview} and \emph{projection} matrices for transforming the vertices into \emph{normalised-device-space} are commonly transferred to the GPU. This differs based on whether a \emph{perspective} view or \emph{orthographic} view is desired. However, these transformations are not used in this project; all our coordinates on the CPU are in normalised-device-space as we don't need to transform the view in order to produce a simple orthographic view.
 
 The \textbf{Vertex Shader} is the next stage. It is a customisable program that operates on a single vertex at a time. Like all shaders, many instances of the program are running simultaneously to enable fast throughput. The vertex shader involves the actual transformation from world-space to normalised-device-space; the latter is a three-dimensional coordinate system in which each axis extends from -1 to +1. This space makes the pipeline more efficient as anything outside of this range can be discarded before rasterisation.
 
-Many other operations can be performed in the vertex shader, and an beneficial optimisation process can be to move work from the fragment shader into the vertex shader where possible (\emph{e.g.} per-vertex lighting vs. per-fragment lighting), since there are many more generated fragments than there are vertices, making per-fragment operations more time-consuming.
+Many other operations can be performed in the vertex shader, and an beneficial optimisation process can be to move work from the fragment shader into the vertex shader where possible (\emph{e.g.} per-vertex lighting vs. per-fragment lighting), since there are many more generated fragments than there are vertices, making per-fragment operations more time-consuming. The shader can pass miscellaneous data on to be utilised in later stages.
 
-\textbf{Rasterisation} follows the vertex shader. This is where anything outside of normalised-device-space is discarded. Triangles are converted into \emph{fragments}, discrete data in pixel-space; device-space triangles are flattened to 2D and fragments are created based on whether the locations of pixels fall within those triangles.
+\textbf{Rasterisation} follows the vertex shader. This is where anything outside of normalised-device-space is discarded. Triangles are converted into \emph{fragments}, which are discrete data in pixel-space. This is done by flattening device-space triangles to 2D creating fragments based on whether the locations of pixels fall within those triangles.
 
 The fragments of triangles that are hidden behind others are discarded here in a process known as \emph{depth-testing}, which involves the use of a depth buffer to record and compare each fragment's depth in the scene, in order to allow triangles to occlude and intersect each other correctly.
 
-interpolation
+The \textbf{Fragment Shader} is the final stage in a simple graphics pipeline. Its main responsibility is to produce the final colour of each pixel. Any per-vertex data that has been passed on by the vertex shader gets transformed into per-fragment data; a vertex attribute that differs for each of the three corners of a triangle will be interpolated based on the position of the fragment in relation to the vertices. This is useful for lots of tasks, including generating per-fragment surface normals efficiently, since there is bespoke hardware on the GPU that performs this task before the fragment shader executes. The per-fragment data can then be observed by the fragment shader and the colour of the final pixel is computed.
 
-\textbf{Fragment Shader}
-
-\textbf{Colour Blending}
+% TODO: colour blending, rendering to textures, uniforms. "to be clear, this is just one way to construct a graphics pipeline. "
 
 \subsection{The Vulkan API}
 
