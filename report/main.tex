@@ -36,6 +36,7 @@
 \usepackage[font={small, it}, labelfont=bf, center]{caption}
 \usepackage[top=1cm, left=1cm, right=1cm, bottom=2cm]{geometry}
 \usepackage{minted}
+\usepackage{lipsum}
 
 \usepackage{helvet} % Helvetica 'phv'
 \usepackage{mathptmx} % Times 'ptm'
@@ -175,9 +176,6 @@ Coordination between threads is a necessary characteristic of reliable multi-thr
 \textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. The thread now "owns" the mutex. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex (only the owning thread can unlock a mutex). The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex instead of \verb|lock()|; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| \citep{CppMutex}.
 
 
-
-
-
 % TODO: talk about how I'm using semaphores in Vulkan
 \textbf{Semaphores} come in various kinds, but in general they are thread-safe counters. Specifics as to how a semaphore is used is up to its API and the programmer's needs, but a common convention is for a thread to perform a \verb|wait()| operation on a semaphore, which will cause the thread to block until the semaphore's counter is greater than zero. At that point, or if it was already greater than zero, the semaphore will decrement by one and the thread will continue executing. A \verb|post()| can be performed by any thread, which will increment the semaphore. If the counter is above zero and there is at least one thread waiting on the semaphore, one thread can now continue as stated above \citep{BoostSync}.
 
@@ -292,7 +290,7 @@ void main() {
 \section{Optimisation \& Analysis}
 
 Initial measurements were taken of the program's frame durations. Figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
-% TOD: Why does the measurement vary? "99th-percentile excacerbates it too"
+% TODO: Why does the measurement vary? "99th-percentile excacerbates it too"
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initialtimes}
@@ -302,6 +300,8 @@ Initial measurements were taken of the program's frame durations. Figure \ref{fi
 
 \subsection{Multithreading \& Random Number Generation}
 
+\lipsum[1-1]
+
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
 \caption{(placeholder caption)}
@@ -309,6 +309,8 @@ Initial measurements were taken of the program's frame durations. Figure \ref{fi
 \end{figure}
 
 \subsection{,mutexless multithread, non-blocking-ish}
+
+\lipsum[1-1]
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
@@ -318,6 +320,8 @@ Initial measurements were taken of the program's frame durations. Figure \ref{fi
 
 \subsection{,const ref}
 
+\lipsum[1-1]
+
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{pass-by-value-reference}
 \caption{(placeholder caption)}
@@ -326,50 +330,11 @@ Initial measurements were taken of the program's frame durations. Figure \ref{fi
 
 \subsection{,no thread recreation}
 
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{recreate-no-recreation}
-\caption{(placeholder caption)}
-\label{fig:recreate-no-recreation}
-\end{figure}
+\lipsum[1-1]
 
-\subsection{,simd w conversion} \label{sec:simd}
-
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{nosimd-slowsimd}
-\caption{(placeholder caption)}
-\label{fig:nosimd-slowsimd}
-\end{figure}
-
-,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as XYZXYZXYZ..., similar to a common left-right layout for audio samples, LRLRLRLR. But sometimes other memory layouts are used, such as XXXYYYZZZ.
-
-\subsection{,simd w direct gpu transfer}
-
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{nosimd-simdwic-simdwdirect}
-\caption{(placeholder caption)}
-\label{fig:nosimd-simdwic-simdwdirect}
-\end{figure}
-
-\subsection{speedup pies}
-
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{speedup-pies}
-\caption{(placeholder caption)}
-\label{fig:speedup-pies}
-\end{figure}
-
-todo
-% (Describe in detail all the optimisation techniques I implemented and the changes in the performance characteristics of the program as I make changes to the code. Describe the critical thought processes along the way. Describe the complexity and other difficulties of implementing each optimisation. Towards the end of this section, focus on analysis including comparisons of related optimisations performed. Include charts showing how performance scales with the amount of particles. Include diagrams showing data pipelines.)
-
-% "At this point" depth testing was implemented. This highlighted that the existing code for updating particles was based on the assumption that particles should move closer to the screen by increasing their position.z variable. However, a convention in depth testing of "lower values mean closer to the screen, and therefore less depth" is more intuitive, so changes were made to the particle system and the vertex shader to flip the usage of the Z axis. Implementing depth-testing and flipping the Z axis did not result in a noticeable change in performance.
-
-
-
-
-\begin{figure}[h]
 \begin{minted}[fontsize=\footnotesize]{javascript}
-boost::semaphore onUpdateStart(0);
-boost::semaphore onUpdateComplete(0);
+Semaphore onUpdateStart;
+Semaphore onUpdateComplete;
 
 function initialise() {
   for i in updaterThreadCount {
@@ -386,25 +351,54 @@ function updaterThread() {
 }
 
 function updateAllParticles() {
-  onUpdateComplete = semaphore(updaterThreadCount);
-  
-  for i in updaterThreadCount {
-    onUpdateStart.post();
-  }
-  
-  onUpdateComplete.wait();
+  onUpdateStart.post(updaterThreadCount);
+  onUpdateComplete.wait(updaterThreadCount);
 }
 \end{minted}
-\caption{Pseudo-code that updates particles in parallel without recreating threads, synchronised using dual semaphores.}
-\label{fig:semaphore_pseudo}
+
+(((Pseudo-code that updates particles in parallel without recreating threads, synchronised using dual semaphores.))) shows how this is implemented: When \verb|updateAllParticles()| is called on the main thread, it will wait and the \verb|updaterThread|s will each update their own particle ranges. When they are all done, they will notify \verb|updateAllParticles()| on the main thread, which will return. The \verb|updaterThread|s will wait for the next update at the top of their \verb|while| loops, and the main thread is then free to render the newly-updated particles.
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{recreate-no-recreation}
+\caption{(placeholder caption)}
+\label{fig:recreate-no-recreation}
 \end{figure}
 
-Figure \ref{fig:semaphore_pseudo} shows how this is implemented: When \verb|updateAllParticles()| is called on the main thread, it will wait and the \verb|updaterThread|s will each update their own particle ranges. When they are all done, they will notify \verb|updateAllParticles()| on the main thread, which will return. The \verb|updaterThread|s will wait for the next update at the top of their \verb|while| loops, and the main thread is then free to render the newly-updated particles.
+\subsection{,simd w conversion} \label{sec:simd}
 
+\lipsum[1-1]
 
-\subsection{,render task order (queue wait)}
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{nosimd-slowsimd}
+\caption{(placeholder caption)}
+\label{fig:nosimd-slowsimd}
+\end{figure}
 
-\subsection{,better gpu transfer}
+,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as XYZXYZXYZ..., similar to a common left-right layout for audio samples, LRLRLRLR. But sometimes other memory layouts are used, such as XXXYYYZZZ.
+
+\subsection{,simd w direct gpu transfer}
+
+\lipsum[1-1]
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{nosimd-simdwic-simdwdirect}
+\caption{(placeholder caption)}
+\label{fig:nosimd-simdwic-simdwdirect}
+\end{figure}
+
+% (Describe in detail all the optimisation techniques I implemented and the changes in the performance characteristics of the program as I make changes to the code. Describe the critical thought processes along the way. Describe the complexity and other difficulties of implementing each optimisation. Towards the end of this section, focus on analysis including comparisons of related optimisations performed. Include charts showing how performance scales with the amount of particles. Include diagrams showing data pipelines.)
+
+% "At this point" depth testing was implemented. This highlighted that the existing code for updating particles was based on the assumption that particles should move closer to the screen by increasing their position.z variable. However, a convention in depth testing of "lower values mean closer to the screen, and therefore less depth" is more intuitive, so changes were made to the particle system and the vertex shader to flip the usage of the Z axis. Implementing depth-testing and flipping the Z axis did not result in a noticeable change in performance.
+
+\subsection{speedup pies}
+
+\lipsum[1-1]
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{speedup-pies}
+\caption{(placeholder caption)}
+\label{fig:speedup-pies}
+\end{figure}
 
 \section{Conclusion}
 
