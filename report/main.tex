@@ -204,19 +204,18 @@ The individual functions of the program will be profiled using tools such as Vis
 
 \subsection{Equipment}
 
-% TODO: rephrase this like a built a PC specifically for this project?
 We will be designing, profiling and optimising the program for a desktop computer with an Intel Core i5 6400 at 2.7-3.3 GHz with four cores, 8GB of DDR4 RAM at (TODO: what frequency?) and an Nvidia Geforce GTX 1060 3GB. This  graphics card is the most common among Steam users with a 14.5\% share at the time of writing \citep{SteamSurvey}. Valve/Steam's published data on their users' CPUs suggests that at least 25\% of users own a CPU with the same core count and a similar frequency as our i5 6400. 8GB is also the most popular memory amount at 37.1\% of users, so this setup in all should give us a good example of how this program would perform on an average user's system.
 
 % TODO: Note about the CPU not having more threads than cores? (4:4)
 
 % TODO: Talk about how we will profile it. Vulkan layers, Visual Studio's tools etc.
 
-\section{The Initial Implementation}
+\section{Initial Implementation}
 
 % (Describe the design decisions of the program before any optimisation is performed, and any Vulkan-specific implementation details relevant to the project.)
 % My implementation never requires reallocating particles! Brag! It also simplifies SOA so we don't need to do AOSOA!
 
-A Windows application was built in C++17, using version 2.0.10 of the SDL library (\citeyear{SDL2}) for window creation and frame duration calculation. Version 0.9.9.6 of the GLM library (\citeyear{GLM}) was used to provide a 3D vector class and some functions for vector mathematics.
+A Windows application was built in C++17, using version 2.0.10 of the SDL library (\citeyear{SDL2}) for window creation and frame duration calculation. Version 0.9.9.6 of the GLM library (\citeyear{GLM}) was used to provide a 3D vector class along with functionality for vector mathematics.
 
 A particles.cpp file was created that updates an array of \verb|Particle| structures every frame, containing 3D positions and scalar brightness values as shown:
 
@@ -251,38 +250,46 @@ void update(int particleCount, float deltaTime) {
 
 Notice the call to \verb|respawn()|. When a particle reaches a ground level \verb|1.0f|, this function is called to reset the particle's position, randomise its brightness, and set its new velocity with a degree of randomness.
 
-% Wordcount: include this
-% \begin{minted}[fontsize=\footnotesize]{C++}
-% void respawn(Particle *particle, vec3 *velocity) {
-%   particle->position = { -0.8, -0.1, 0.5 };
-%   particle->brightness = randf();
+This algorithm has the problem of not intelligently spreading out the particles evenly across the scene, but this is not an issue in practice as the particles are positioned at a different height at the beginning of the program, such that they each take a different amount of time to hit ground level. This spreads out the respawn events across time.
+% TODO: "this is not a robust way to solve this problem for a real game" etc
 
-%   vec3 baseVelocity = { 0.4, -1, 0 };
-%   const float velocityRandomnessAmount = 0.3f;
-  
-%   vec3 velocityRandomness = {
-%     randf()-0.5f, // X
-%     randf()-0.5f, // Y
-%     (randf()-0.5f)*0.5 // Z
-%     };
-  
-%   float magnitudeMultiplier = randf()*0.95f+0.05f;
-%   velocityRandomness =
-%     normalize(velocityRandomness)
-%     * velocityRandomnessAmount
-%     * magnitudeMultiplier;
+A Vulkan 1.1 graphics system was created in graphics.cpp that consumes the array of \verb|Particle| structures and sends them to the GPU. The Vulkan setup code was designed to find a graphics device whose driver supports a single \verb|VkQueue| (a queue for executing GPU-bound commands) that can process both graphical and surface presentation commands. This is done by checking for the \verb|VK_QUEUE_GRAPHICS_BIT| flag and ensuring that \verb|vkGetPhysicalDeviceSurfaceSupportKHR()| returns \verb|true|.
+% TODO: diagram or pseudocode describing the vulkan stuff
 
-%   *velocity = baseVelocity + velocityRandomness;
-% }
-% \end{minted}
+A vertex shader was written to render one point per particle and adjust the brightnesses based on how close the particle is to the viewer:
 
-A Vulkan 1.1 graphics system was created in graphics.cpp that consumes an array of \verb|Particle| structures containing 3D positions and scalar brightness values as shown:
+\begin{minted}[fontsize=\footnotesize]{C++}
+layout(location = 0) in vec3 position;
+layout(location = 1) in float brightness;
+layout(location = 0) out vec3 outColor;
 
-This data 
+void main() {
+  gl_PointSize = 2;
+  gl_Position = vec4(position, 1.0);
+
+  // Set the colour based on brightness and dim the
+  // fragment based on the particle's depth (position.z).
+  outColor = vec3(brightness, brightness, 1.0);
+  outColor *= (0.5 + (position.z-0.5) * 2);
+}
+\end{minted}
+
+The fragment shader simply coloured the pixels using the value that was passed from the vertex shader:
+
+\begin{minted}[fontsize=\footnotesize]{C++}
+layout(location = 0) in vec3 inColor;
+layout(location = 0) out vec4 outColor;
+
+void main() {
+    outColor = vec4(inColor, 1.0);
+}
+\end{minted}
 
 \section{Optimisation \& Analysis}
 
-\subsection{,multithread and rng}
+
+
+\subsection{Multithreading \& Random Number Generation}
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
