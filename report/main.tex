@@ -339,7 +339,7 @@ void updaterThread(float stepSize) {
 }
 \end{minted}
 
-The function that spawned the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. After these changes a bug was discovered that caused particles to respawn with poor randomisation of velocities and brightnesses (Figure \ref{fig:randombug}).
+The function that spawned the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. After these changes a bug was discovered that caused particles to respawn with poor random number generation (RNG) for velocities and brightnesses (Figure \ref{fig:randombug}).
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{randombug}
@@ -347,7 +347,8 @@ The function that spawned the threads would wait for them to finish by calling t
 \label{fig:randombug}
 \end{figure}
 
-Debugging the program showed that the new multithreading code was performing as expected, so attention was given to the library function being used for random number generation (RNG), \verb|rand()| and \verb|srand()|. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed wasn't given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program.
+% WORDCOUNT: explain what a random seed is.
+Debugging the program showed that the new multithreading code was performing as expected, so attention was given to the library function being used for random number generation, \verb|rand()| and \verb|srand()|. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed wasn't given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program.
 % TODO oh hey rand() isn't thread-safe.
 % TODO
 % TODO
