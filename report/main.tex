@@ -249,7 +249,7 @@ void update(int particleCount, float deltaTime) {
 }
 \end{minted}
 
-Notice the call to \verb|respawn()|. When particle reached a ground level \verb|1.0f|, this function would be called to reset the particle's position, randomise its brightness, and set its new velocity with a degree of randomness.
+Notice the call to \verb|respawn()|. When a particle reaches a ground level \verb|1.0f|, this function is called to reset the particle's position, randomise its brightness, and set its new velocity with a degree of randomness.
 
 % Wordcount: include this
 % \begin{minted}[fontsize=\footnotesize]{C++}
@@ -314,7 +314,7 @@ This data
 \label{fig:recreate-no-recreation}
 \end{figure}
 
-\subsection{,simd w conversion}
+\subsection{,simd w conversion} \label{sec:simd}
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{nosimd-slowsimd}
