@@ -198,7 +198,11 @@ Although the effects of thread-blocking can be a significant challenge to remove
 
 \section{Methodology}
 
-A particle system will be built in C++17 and Vulkan 1.1 to resemble spraying water, similar to some of the drainpipe work done by \citet{Tatarchuk2006}. Vertical synchronisation, the option to synchronise the framerate with the vertical refresh rate of the monitor, will be turned off and the program will calculate the duration of the slowest frame out of every one hundred frames (the 99th percentile) and print it to the console. The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts.
+A particle system will be built in C++17 and Vulkan 1.1 to resemble spraying water, similar to some of the drainpipe work done by \citet{Tatarchuk2006}. Vertical synchronisation, the option to synchronise the framerate with the vertical refresh rate of the monitor, will be turned off and the program will calculate the duration of the slowest frame out of every one hundred frames (the 99th percentile) and print it to the console.
+
+% TODO: why use 99th?
+
+The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts.
 
 The individual functions of the program will be profiled using tools such as Visual Studio's performance analyzer \citep{VSPerfTools} in order to gain an understanding of which parts of the code could be improved. The program will be optimised in stages. At every stage, the performance will be re-examined, new plots will be produced, and the next optimisation steps will be researched and evaluated.
 
@@ -287,11 +291,12 @@ void main() {
 
 \section{Optimisation \& Analysis}
 
-Initial measurements were taken of the program's frame durations (Figure \ref{fig:initialtimes}).
+Initial measurements were taken of the program's frame durations. Figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
+% TOD: Why does the measurement vary? "99th-percentile excacerbates it too"
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initialtimes}
-\caption{Frame durations for different particle counts before any optimisations were performed.}
+\caption{99th-percentile frame durations for different particle counts, before any optimisations were performed.}
 \label{fig:initialtimes}
 \end{figure}
 
