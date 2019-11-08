@@ -300,7 +300,54 @@ Initial measurements were taken of the program's frame durations. Figure \ref{fi
 
 \subsection{Multithreading \& Random Number Generation}
 
-\lipsum[1-1]
+Profiling the program showed that the function that was taking the most time was \verb|updateOneParticle()| in particles.cpp, but its contents was quite minimal:
+
+\begin{minted}[fontsize=\footnotesize]{C++}
+void updateOneParticle(int32_t i, float stepSize) {
+  velocities[i] *= 1 - airResistance * stepSize;
+  velocities[i].y += gravity * stepSize;
+  particles[i].position += velocities[i] * stepSize;
+
+  if (particles[i].position.y > groundLevel) {
+    respawn(&particles[i], &velocities[i]);
+  }
+}
+\end{minted}
+
+Notes were made to precalculate \verb|1| \verb|-| \verb|airResistance| \verb|*| \verb|stepSize| and \verb|gravity| \verb|*| \verb|stepSize| in advance so it didn't have to be re-calculated for every call to this function, but at this stage it appeared that parallelising \verb|updateOneParticle()| across all four CPU cores would provide a more significant performance increase. The first attempt at this involved spawning four threads at the start of \verb|update()|. Each thread would repeatedly request new particles to update:
+
+\begin{minted}[fontsize=\footnotesize]{C++}
+int32_t requestParticleIndex() {
+  int32_t index;
+  particleMutex.lock();
+  
+  if (nextParticleIndexToUpdate < particles.size()) {
+  index = nextParticleIndexToUpdate++;
+  } else index = -1;
+  
+  particleMutex.unlock();
+  return index;
+}
+\end{minted}
+\begin{minted}[fontsize=\footnotesize]{C++}
+void updaterThread(float stepSize) {
+  while (true) {
+    int32_t i = requestParticleIndex();
+    if (i < 0) break;
+    updateOneParticle(i, stepSize);
+  }
+}
+\end{minted}
+
+The function that spawned the threads would wait for them to finish by calling \verb|std::thread::join()| before returning to allow the frame to be rendered. A bug was discovered in the \verb|respawn()| code that caused poor randomisation of velocities (Figure \ref{randombug}).
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{randombug}
+\caption{(placeholder caption)}
+\label{fig:randombug}
+\end{figure}
+
+
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
