@@ -339,15 +339,15 @@ void updaterThread(float stepSize) {
 }
 \end{minted}
 
-The function that spawned the threads would wait for them to finish by calling \verb|std::thread::join()| before returning to allow the frame to be rendered. A bug was discovered in the \verb|respawn()| code that caused poor randomisation of velocities (Figure \ref{randombug}).
+The function that spawned the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. After these changes a bug was discovered that caused particles to respawn with poor randomisation of velocities and brightnesses (Figure \ref{fig:randombug}).
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{randombug}
-\caption{(placeholder caption)}
+\caption{Unnatural distributions of particles were exhibited after the first multithreading attempt.}
 \label{fig:randombug}
 \end{figure}
 
-
+Debugging the program showed that the new multithreading code was performing as expected, so attention was given to the library function being used for random number generation (RNG), \verb||
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
