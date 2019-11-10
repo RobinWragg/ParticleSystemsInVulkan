@@ -30,7 +30,15 @@ namespace particles {
 
 	float randf() {
 		static mt19937 randomGenerator((unsigned int)SDL_GetPerformanceCounter());
-		return (mt19937::min() + randomGenerator()) / (float)mt19937::max();
+
+		// Generate a number and remove the lower offset.
+		float randomNumber = randomGen() - randomGen.min();
+
+		// Calculate the range of possible values.
+		float range = randomGen.max() - randomGen.min();
+
+		// Return a random number in the range 0.0f-1.0f.
+		return randomNumber / range;
 	}
 
 	void addComponentDescriptions(
