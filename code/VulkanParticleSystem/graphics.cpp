@@ -503,9 +503,8 @@ namespace graphics {
 	}
 
 	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
-		printAvailableInstanceLayers();
-
-		vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+		
+		vector<const char*> requiredValidationLayers = { "VK_LAYER_LUNARG_standard_validation" };
 		vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
 
@@ -546,7 +545,7 @@ namespace graphics {
 			createInfo.ppEnabledLayerNames = requiredValidationLayers.data();
 
 			auto creationResult = vkCreateInstance(&createInfo, nullptr, &instance);
-			//SDL_assert_release( == VK_SUCCESS);
+			SDL_assert_release(creationResult == VK_SUCCESS);
 			printf("\nCreated Vulkan instance\n");
 		}
 
@@ -565,10 +564,11 @@ namespace graphics {
 			createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
 			createInfo.pfnUserCallback = debugCallback;
-
+			/*
 			auto createDebugUtilsMessenger =
 				(PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 			SDL_assert_release(createDebugUtilsMessenger(instance, &createInfo, nullptr, &debugMsgr) == VK_SUCCESS);
+			*/
 		}
 
 		// Create surface
