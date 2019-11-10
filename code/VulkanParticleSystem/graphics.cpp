@@ -505,7 +505,7 @@ namespace graphics {
 	void init(SDL_Window *window, VkVertexInputBindingDescription bindingDesc, vector<VkVertexInputAttributeDescription> attribDescs) {
 		printAvailableInstanceLayers();
 
-		vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+		vector<const char*> requiredValidationLayers = { "VK_LAYER_LUNARG_standard_validation" };
 		vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
 
