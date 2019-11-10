@@ -64,6 +64,10 @@
 \maketitle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\begin{abstract}
+TODO TODO TODO TODO TODO TODO
+\end{abstract}
+
 \section{Introduction}
 
 The aim of this project is to research and experiment with techniques for optimising the rendering speed of particle systems and Vulkan-based rendering pipelines. Techniques are collected from related literature and are applied to our own program, a particle system built in C++ and Vulkan. From this experience, and independent experimentation, we will collect and document the most appropriate techniques for easy consumption by those who may be considering implementing or improving their own particle system and/or Vulkan pipeline.
@@ -175,15 +179,14 @@ Coordination between threads is a necessary characteristic of reliable multi-thr
 
 \textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. The thread now "owns" the mutex. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex (only the owning thread can unlock a mutex). The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex instead of \verb|lock()|; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| \citep{CppMutex}.
 
-
-% TODO: talk about how I'm using semaphores in Vulkan
+% WORDCOUNT: talk about how I'm using semaphores in Vulkan
 \textbf{Semaphores} come in various kinds, but in general they are thread-safe counters. Specifics as to how a semaphore is used is up to its API and the programmer's needs, but a common convention is for a thread to perform a \verb|wait()| operation on a semaphore, which will cause the thread to block until the semaphore's counter is greater than zero. At that point, or if it was already greater than zero, the semaphore will decrement by one and the thread will continue executing. A \verb|post()| can be performed by any thread, which will increment the semaphore. If the counter is above zero and there is at least one thread waiting on the semaphore, one thread can now continue as stated above \citep{BoostSync}.
 
 A semaphore that is always either one or zero is equivalent to a mutex, except for one difference: A \verb|post()| operation can be performed by any thread that has access to the semaphore, allowing any thread to unblock execution, instead of just the thread which called \verb|wait()|.
 
 Semaphores are being introduced into the C++ standard library as part of C++20 \citep{C20Sync}, so they aren't available to our C++17 environment but we could use a separate library for this functionality if necessary, such as the Boost library collection's \verb|interprocess_semaphore|, \verb|named_semaphore|, and \verb|anonymous_semaphore|.
 
-% TODO: Talk in more detail about different kinds of thread blocking like deadlocking.
+% TODO: Aaron says I could talk in more detail about different kinds of thread blocking like deadlocking.
 Blocked threads are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. In the worst case, a \emph{deadlock} can occur when all threads are blocked, waiting on each other indefinitely. In the case of mutexes, a good rule of thumb is to keep the areas of the program that are mutex-guarded as small, simple and fast as possible, to reduce the amount of time that mutexes are locked, thereby reducing the chance of blocked threads.
 
 Although the effects of thread-blocking can be a significant challenge to remove entirely, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program.
@@ -348,7 +351,9 @@ The function that spawned the threads would wait for them to finish by calling t
 \end{figure}
 
 % WORDCOUNT: explain what a random seed is.
-Debugging the program showed that the new multithreading code was performing as expected, so attention was given to the library function being used for random number generation, \verb|rand()| and \verb|srand()|. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed wasn't given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program.
+Debugging the program showed that the new multithreading code was performing as expected, so attention was given to the random number generation itself, implemented with the standard C library functions \verb|rand()| and \verb|srand()| (\citeyear{CLibRand}). To debug this, calls to these functions were wrapped in mutex locks to ensure no race conditions or data corruption was occurring; this did not change the generated random numbers. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed wasn't given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program. The generated numbers still had a poor distribution, and further debugging confirmed that Microsoft's implementation of these functions has some kind of thread-based limitation.
+
+Microsoft's documentation on \verb|rand()| does not mention thread-safety \citep{CLibRandMicrosoft}, but Linux's documentation states its implementation "is not reentrant or thread-safe" \citep{CLibRandLinux} due to its internal state, but this still does not explain why Microsoft's \verb|rand()| doesn't perform properly even when guarded by a mutex.
 % TODO oh hey rand() isn't thread-safe.
 % TODO
 % TODO
