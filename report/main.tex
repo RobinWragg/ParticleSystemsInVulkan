@@ -292,6 +292,8 @@ void main() {
 
 \section{Optimisation \& Analysis}
 
+% \emph{\textbf{Note:} The }std::\emph{ entries in this section's figures of diagnostics tables, such as figures \ref{fig:rng-mutex-diag} and \ref{fig:mutexless-diag}, are not costly operations although they appear at the top of their tables. They are related to }\verb|std::thread|\emph{ and are simply part of the call stack that led to costly operations.}
+
 Initial measurements were taken of the program's frame durations. figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
 % TODO: Why does the measurement vary? "99th-percentile excacerbates it too"
 
@@ -397,7 +399,7 @@ We can see in figure \ref{fig:initial-rng-multithread} that the Mersenne Twister
 \label{fig:rng-mutex-diag}
 \end{figure}
 
-CPU utilisation from \ref{fig:multithread-diagnostics} was re-evaluated and function execution times were profiled. Figure \ref{fig:rng-mutex-diag} shows that after initialisation, the program was taking advantage of only 60-80\% of the CPU and the vast majority of time was spent executing \verb|particles::updaterThread()|. Upon closer inspection of what was taking time inside this function it can be seen that \verb|requestParticleIndex()| was very costly (figure \ref{fig:updaterthread-request}); the operations in this function were guarded by a mutex as described in section \ref{sec:multithread}, so the updater threads were spending a lot of their time waiting on each other there.
+CPU utilisation from \ref{fig:multithread-diagnostics} was re-evaluated and function execution times were profiled. Figure \ref{fig:rng-mutex-diag} shows that after initialisation, the program was taking advantage of only 60-80\% of the CPU and the vast majority of time was spent executing \verb|particles::updaterThread()|. This is the same for all figures of diagnostics in this paper.). Upon closer inspection of what was taking time inside this function it can be seen that \verb|requestParticleIndex()| was very costly (figure \ref{fig:updaterthread-request}); the operations in this function were guarded by a mutex as described in section \ref{sec:multithread}, so the updater threads were spending a lot of their time waiting on each other there.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{updaterthread-request}
@@ -422,13 +424,15 @@ The new CPU utilisation tended to be much closer to 100\% (figure \ref{fig:mutex
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexless-diag}
-\caption{}
+\caption{All CPU cores were better utilised after a change to mutexless, ranged threads.}
 \label{fig:mutexless-diag}
 \end{figure}
 
+Newly-recorded frame durations showed a modest performance improvement which appeared to scale well at higher particle counts, although that may have been due to the margin of error in recordings.
+
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
-\caption{(placeholder capfftion)}
+\caption{Overall speed improvements due removing mutexes and assigning particles to updater threads in ranges.}
 \label{fig:mutexes-rangedthreads}
 \end{figure}
 
