@@ -143,7 +143,7 @@ Where $speedup$ is the overall speed increase of the entire task, $s$ is the spe
 
 Amdahl's law in its most optimistic case is when $p = 1$, which greatly simplifies to $speedup(s) = s$. If we improve the system by adding more processing cores, we introduce $c$, the number of processing cores in the system: $speedup(s) = cs$. Since $c$ is a coefficient of $s$, every increment to $c$ will result in a continually diminishing increase in $speedup(s)$.
 
-This means that a single-threaded task that requires a constant amount CPU time can reach a fraction of that time if rewritten as a multi-threaded task, but every additional core yields diminishing returns (see Figure \ref{fig:cpu_cores}).
+This means that a single-threaded task that requires a constant amount CPU time can reach a fraction of that time if rewritten as a multi-threaded task, but every additional core yields diminishing returns (see figure \ref{fig:cpu_cores}).
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{cpu_cores}
@@ -157,7 +157,7 @@ This means that a single-threaded task that requires a constant amount CPU time 
 
 \subsection{Particle System Design}
 
-\citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes (see Figure \ref{fig:tatarchuk}). The water would then splash into puddles using a pre-rendered splash sequence. The otherwise easy-to-spot repetitiveness of this splash was hidden by randomising the size and transparency of those particles, as well as flipping them horizontally. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the actual simulated falling speed of the droplets within the splash would be convincingly similar regardless of particle size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash. % TODO: Delve into this paper more?
+\citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes (see figure \ref{fig:tatarchuk}). The water would then splash into puddles using a pre-rendered splash sequence. The otherwise easy-to-spot repetitiveness of this splash was hidden by randomising the size and transparency of those particles, as well as flipping them horizontally. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the actual simulated falling speed of the droplets within the splash would be convincingly similar regardless of particle size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash. % TODO: Delve into this paper more?
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{tatarchuk}
@@ -292,7 +292,7 @@ void main() {
 
 \section{Optimisation \& Analysis}
 
-Initial measurements were taken of the program's frame durations. Figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
+Initial measurements were taken of the program's frame durations. figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
 % TODO: Why does the measurement vary? "99th-percentile excacerbates it too"
 
 \begin{figure}[h]
@@ -301,7 +301,7 @@ Initial measurements were taken of the program's frame durations. Figure \ref{fi
 \label{fig:initialtimes}
 \end{figure}
 
-\subsection{Multithreading \& Random Number Generation}
+\subsection{Multithreading \& Random Number Generation} \label{sec:multithread}
 
 Profiling the program showed that the function that was taking the most time was \verb|updateOneParticle()| in particles.cpp, but its contents was quite minimal:
 
@@ -342,7 +342,15 @@ void updaterThread(float stepSize) {
 }
 \end{minted}
 
-The function that spawned the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. After these changes a bug was discovered that caused particles to respawn with poor pseudo-random number generation (RNG) for velocities and brightnesses (Figure \ref{fig:randombug}).
+The function that spawned the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. The program was confirmed to be utilising multiple CPU cores using Visual Studio's diagnostics (figure \ref{fig:multithread-diagnostics}), where total CPU usage was significantly above $\frac{1}{core count}=$ 25\%.
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{multithread-diagnostics}
+\caption{Diagnostics showing utilisation of multiple CPU cores.}
+\label{fig:multithread-diagnostics}
+\end{figure}
+
+After these changes a bug was discovered that caused particles to respawn with poor pseudo-random number generation (RNG) for velocities and brightnesses (figure \ref{fig:randombug}).
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{randombug}
@@ -351,11 +359,11 @@ The function that spawned the threads would wait for them to finish by calling t
 \end{figure}
 
 % WORDCOUNT: explain what a random seed is.
-Debugging the program showed that the new multithreading code was performing as expected, so attention was given to the random number generation itself, implemented with the standard C library functions \verb|rand()| and \verb|srand()| (\citeyear{CLibRand}). To debug this, calls to these functions were wrapped in mutex locks to ensure no race conditions or data corruption was occurring; this did not change the generated random numbers. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed wasn't given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program. The generated numbers still had a poor distribution, and further debugging confirmed that Microsoft's implementation of these functions has some kind of thread-based limitation.
+Debugging the program showed that the new multithreading code was performing correctly, so attention was given to the random number generation itself, implemented with the standard C library functions \verb|rand()| and \verb|srand()| (\citeyear{CLibRand}). To debug this, calls to these functions were wrapped in mutex locks to ensure no race conditions or data corruption was occurring; this did not change the generated random numbers. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed wasn't given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program. The generated numbers still had a poor distribution, and further debugging confirmed that Microsoft's implementation of these functions has some kind of thread-based limitation.
 
 Their documentation on \verb|rand()| does not mention thread-safety \citep{CLibRandMicrosoft}, but Linux's documentation states its implementation "is not reentrant or thread-safe" \citep{CLibRandLinux} due to its internal state, but this still does not explain why Microsoft's \verb|rand()| might not perform correctly across multiple threads, even when guarded by a mutex.
 
-To move on with development, \verb|rand()| and \verb|srand()| were replaced with \verb|mt19937| \citep{mt19937Docs}, an C++ standard library class that implements the Mersenne Twister RNG algorithm \citep{Matsumoto1998}awef.
+To move on with development, the multithreading code was moved to a separate git branch, and \verb|rand()| and \verb|srand()| were replaced with \verb|mt19937| \citep{mt19937Docs}, an C++ standard library class that implements the Mersenne Twister RNG algorithm \citep{Matsumoto1998}. This generator requires more CPU time than \verb|rand()|, but it was seen as necessary due to the visual quality of particle systems relying heavily on well-distributed RNG values. The resultant code is shown below.
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 // Returns a unit-clamped float using Mersenne Twister.
@@ -365,23 +373,58 @@ float randf() {
   // Generate a number and remove the lower offset.
   float randomNumber = randomGen() - randomGen.min();
   
-  // Calculate the range of possible values.
-  float range = randomGen.max() - randomGen.min();
-  
   // Return a random number in the range 0.0f-1.0f.
+  float range = randomGen.max() - randomGen.min();
   return randomNumber / range;
 }
 \end{minted}
 
+Frame durations were recorded for the single-threaded program with the fixed RNG. The multithreading branch was then merged back into master, and frame durations were recorded again.
+
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
-\caption{(placeholder caption)}
+\caption{Changes in performance caused by fixing a bug in the pseudo-random number generation and sharing the particle updates across multiple threads.}
 \label{fig:initial-rng-multithread}
 \end{figure}
 
-\subsection{,mutexless multithread, non-blocking-ish}
+We can see in figure \ref{fig:initial-rng-multithread} that the Mersenne Twister RNG causes significantly longer frame durations at high particle counts, but the multithreaded program more than makes up for this. However, Better results than this were expected for multithreading, so investigation began into how to improve the the multithreading model.
 
-\lipsum[1-1]
+\subsection{Mutexless Multithreading}
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{rng-mutex-diag}
+\caption{The program made less-than-maximum use of the CPU during and after initialisation, spending most of its time in particles::updaterThread().}
+\label{fig:rng-mutex-diag}
+\end{figure}
+
+CPU utilisation from \ref{fig:multithread-diagnostics} was re-evaluated and function execution times were profiled. Figure \ref{fig:rng-mutex-diag} shows that after initialisation, the program was taking advantage of only 60-80\% of the CPU and the vast majority of time was spent executing \verb|particles::updaterThread()|. Upon closer inspection of what was taking time inside this function it can be seen that \verb|requestParticleIndex()| was very costly (figure \ref{fig:updaterthread-request}); the operations in this function were guarded by a mutex as described in section \ref{sec:multithread}, so the updater threads were spending a lot of their time waiting on each other there.
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{updaterthread-request}
+\caption{Execution time was dominated by requestParticleIndex(), in which multiple threads were waiting for each other to unlock a mutex.}
+\label{fig:updaterthread-request}
+\end{figure}
+
+A new multithreading model was formulated that didn't involve any thread-blocking, except when the threads had finished their work after each frame's updates. Instead of each thread requesting a particle one at a time (which was probably still a significant cost regardless of the mutex issue), threads would be designated a range of particles at the start of an update, and the threads would run until all particles were updated; a thread would only update its own particles, so no resources had to be shared between threads. Below is the new replacement for the \verb|updaterThread()| function (\verb|updateOneParticle()| was not changed):
+
+\begin{minted}[fontsize=\footnotesize]{C++}
+void updateRange(int startIndex,
+                 int endIndex,
+                 float stepSize) {
+  
+  for (int i = startIndex; i < endIndex; i++) {
+    updateOneParticle(i, stepSize);
+  }
+}
+\end{minted}
+
+The new CPU utilisation tended to be much closer to 100\% (figure \ref{fig:mutexless-diag}), and most of the CPU time was now taken by \verb|updateOneParticle()| inside the new \verb|updateRange()| function, which was to become a site of future optimisation.
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{mutexless-diag}
+\caption{}
+\label{fig:mutexless-diag}
+\end{figure}
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
@@ -390,6 +433,8 @@ float randf() {
 \end{figure}
 
 \subsection{,const ref}
+
+Before improving the execution speed of \verb|updateOneParticle()|, attention was turned to how the program performed at lower particle counts.
 
 \lipsum[1-1]
 
