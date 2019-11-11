@@ -430,7 +430,7 @@ The new CPU utilisation tended to be much closer to 100\% (figure \ref{fig:mutex
 \label{fig:mutexless-diag}
 \end{figure}
 
-Newly-recorded frame durations showed a modest performance improvement which appeared to scale well at higher particle counts, although that may have been due to the margin of error in recordings.
+Newly-recorded frame durations (figure \ref{fig:mutexes-rangedthreads}) showed a modest performance improvement which appeared to scale well at higher particle counts, although that may have been due to the margin of error in recordings.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
@@ -438,11 +438,25 @@ Newly-recorded frame durations showed a modest performance improvement which app
 \label{fig:mutexes-rangedthreads}
 \end{figure}
 
-\subsection{,const ref}
+\subsection{Passing Particles by Reference}
 
-Before improving the execution speed of \verb|updateOneParticle()|, attention was turned to how the program performed at lower particle counts.
+A problematic entry was spotted in the diagnostics at the bottom of figure \ref{fig:mutexless-diag}: \verb|"std::vector|\linebreak[0]\verb|<glm::vec<3,float,0>,|\linebreak[0]\verb|std::allocator|..." This indicated that large allocations were being performed by a \verb|std::vector|. Tracking down where this was occurring was not straightforward as clicking through to the parent of this entry on the stack was not possible due to it being listed as "external code". Eventually it was found that these allocations were occurring at the top of the call to \verb|graphics::render()|, which takes a \verb|std::vector| of \verb|Particle|s as a parameter.
 
-\lipsum[1-1]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{pass-by-value-reference}
