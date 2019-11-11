@@ -440,12 +440,17 @@ Newly-recorded frame durations (figure \ref{fig:mutexes-rangedthreads}) showed a
 
 \subsection{Passing Particles by Reference}
 
-A problematic entry was spotted in the diagnostics at the bottom of figure \ref{fig:mutexless-diag}: \verb|"std::vector|\linebreak[0]\verb|<glm::vec<3,float,0>,|\linebreak[0]\verb|std::allocator|..." This indicated that large allocations were being performed by a \verb|std::vector|. Tracking down where this was occurring was not straightforward as clicking through to the parent of this entry on the stack was not possible due to it being listed as "external code". Eventually it was found that these allocations were occurring at the top of the call to \verb|graphics::render()|, which takes a \verb|std::vector| of \verb|Particle|s as a parameter.
+A problematic entry was spotted in the diagnostics at the bottom of figure \ref{fig:mutexless-diag}: \verb|"std::vector|\linebreak[0]\verb|<glm::vec<3,float,0>,|\linebreak[0]\verb|std::allocator|..." This indicated that large allocations were being performed by a \verb|std::vector|. Tracking down where this was occurring was not straightforward as clicking through to the parent of this entry on the stack was not possible due to it being listed as "external code". By process of elimination, it was found that these allocations were occurring at the top of the call to \verb|graphics::render()|, which takes a \verb|std::vector| of \verb|Particle|s as a parameter.
 
+The compiler, which runs code analysis and performs optimisations during the build, failed to notice that this parameter wasn't being mutated during the call to \verb|graphics::render()|, in which case it would have been automatically accessed by reference. The parameter's data was being copied into a new \verb|std::vector| at the top of this function, allocating and freeing over 1.5 MBs every time the function was called. The parameter was changed to a const reference,
 
+\begin{minted}[fontsize=\footnotesize]{C++}
+void render(const vector<Particle> &particles) {
+  ...
+}
+\end{minted}
 
-
-
+Which prevented the parameter from being copied and allowed the program to run up to twice as fast as shown in figure \ref{fig:pass-by-value-reference}. The change gave a smaller speedup at lower particle counts due to the smaller size of the data that was being copied before solving this issue.
 
 
 
