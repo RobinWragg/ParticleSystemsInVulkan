@@ -125,7 +125,7 @@ The \textbf{Fragment Shader} is the final stage in a simple graphics pipeline. I
 
 \subsection{The Vulkan API}
 
-Vulkan is a cross-platform Application Programming Interface for rendering 3D graphics in real-time \citep{Vulkan}. It is developed by the non-profit consortium, the Khronos Group (\citeyear{Khronos}). Along with its contemporaries, Direct3D 12 \citep{d3D12} and Metal \citep{AppleMetal}, it exists to provide graphics programmers with more control over the entire graphics pipeline, enabling a better balance in workload between the CPU and GPU. This was in response to its precursors, namely Direct3D 11 \citep{d3D11} and OpenGL \citep{OpenGLDocs}, which were often bottlenecked by the single-threaded performance of the CPU \citep{CpuBottleneck}.
+Vulkan is a cross-platform Application Programming Interface for rendering 3D graphics in real-time \citep{Vulkan}. It is developed by the non-profit consortium, the Khronos Group (\citeyear{Khronos}). Along with its contemporaries, Direct3D 12 \citep{d3D12} and Metal \citep{AppleMetal}, it exists to provide graphics programmers with more control over the entire graphics pipeline, enabling a better balance in workload between the CPU and GPU. This was in response to its precursors, namely Direct3D 11 \citep{d3D11} and OpenGL \citep{OpenGLDocs}, which were often bottlenecked by the single-threaded performance of the CPU \citep{Joseph2016}.
 
 % TODO: Mention SPIR-V etc?
 
@@ -216,6 +216,8 @@ We will be designing, profiling and optimising the program for a desktop compute
 % TODO: Talk about how we will profile it. Vulkan layers, Visual Studio's tools etc.
 
 \section{Initial Implementation}
+
+% TODO: figure of 100k particles (left) and 500k particles (right)
 
 % (Describe the design decisions of the program before any optimisation is performed, and any Vulkan-specific implementation details relevant to the project.)
 % My implementation never requires reallocating particles! Brag! It also simplifies SOA so we don't need to do AOSOA!
