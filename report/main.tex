@@ -203,7 +203,7 @@ A particle system will be built in C++17 and Vulkan 1.1 to resemble spraying wat
 
 % TODO: why use 99th?
 
-The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts.
+The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts. All measurements and profiling will be done on programs built with the "release" configuration to enable full compile-time optimisations.
 
 The individual functions of the program will be profiled using tools such as Visual Studio's performance analyzer \citep{VSPerfTools} in order to gain an understanding of which parts of the code could be improved. The program will be optimised in stages. At every stage, the performance will be re-examined, new plots will be produced, and the next optimisation steps will be researched and evaluated.
 
