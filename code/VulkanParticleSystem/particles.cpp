@@ -29,7 +29,7 @@ namespace particles {
 	bool updaterThreadsShouldReturn = false;
 
 	float randf() {
-		static mt19937 randomGenerator((unsigned int)SDL_GetPerformanceCounter());
+		static mt19937 randomGen((unsigned int)SDL_GetPerformanceCounter());
 
 		// Generate a number and remove the lower offset.
 		float randomNumber = randomGen() - randomGen.min();
