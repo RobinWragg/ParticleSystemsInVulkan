@@ -434,7 +434,7 @@ Newly-recorded frame durations (figure \ref{fig:mutexes-rangedthreads}) showed a
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
-\caption{Overall speed improvements due removing mutexes and assigning particles to updater threads in ranges.}
+\caption{Overall speed improvements due removing the primary cause of thread-blocking.}
 \label{fig:mutexes-rangedthreads}
 \end{figure}
 
@@ -442,7 +442,7 @@ Newly-recorded frame durations (figure \ref{fig:mutexes-rangedthreads}) showed a
 
 A problematic entry was spotted in the diagnostics at the bottom of figure \ref{fig:mutexless-diag}: \verb|"std::vector|\linebreak[0]\verb|<glm::vec<3,float,0>,|\linebreak[0]\verb|std::allocator|..." This indicated that large allocations were being performed by a \verb|std::vector|. Tracking down where this was occurring was not straightforward as clicking through to the parent of this entry on the stack was not possible due to it being listed as "external code". By process of elimination, it was found that these allocations were occurring at the top of the call to \verb|graphics::render()|, which takes a \verb|std::vector| of \verb|Particle|s as a parameter.
 
-The compiler, which runs code analysis and performs optimisations during the build, failed to notice that this parameter wasn't being mutated during the call to \verb|graphics::render()|, in which case it would have been automatically accessed by reference. The parameter's data was being copied into a new \verb|std::vector| at the top of this function, allocating and freeing over 1.5 MBs every time the function was called. The parameter was changed to a const reference,
+The compiler, which has the ability to run code analysis and perform optimisations during the build, did not identify that this parameter wasn't being mutated during the call to \verb|graphics::render()|, in which case it would have been automatically accessed by reference. The parameter's data was being passed by value, allocating and freeing over 1.5 MBs every time the function was called. The parameter was changed to a const reference,
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 void render(const vector<Particle> &particles) {
@@ -450,28 +450,41 @@ void render(const vector<Particle> &particles) {
 }
 \end{minted}
 
-Which prevented the parameter from being copied and allowed the program to run up to twice as fast as shown in figure \ref{fig:pass-by-value-reference}. The change gave a smaller speedup at lower particle counts due to the smaller size of the data that was being copied before solving this issue.
-
-
-
-
-
-
-
-
-
-
-
+Which prevented the parameter from being copied and allowed the program to run up to twice as fast, as shown in figure \ref{fig:pass-by-value-reference}. The change gave a smaller speedup at lower particle counts due to the smaller size of the data that was being copied before solving this issue.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{pass-by-value-reference}
-\caption{(placeholder caption)}
+\caption{Dramatic performance gains due to fixing simple pass-by-value issue that caused large reallocations.}
 \label{fig:pass-by-value-reference}
 \end{figure}
 
 \subsection{,no thread recreation}
 
-\lipsum[1-1]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \begin{minted}[fontsize=\footnotesize]{javascript}
 Semaphore onUpdateStart;
@@ -531,7 +544,7 @@ function updateAllParticles() {
 
 % "At this point" depth testing was implemented. This highlighted that the existing code for updating particles was based on the assumption that particles should move closer to the screen by increasing their position.z variable. However, a convention in depth testing of "lower values mean closer to the screen, and therefore less depth" is more intuitive, so changes were made to the particle system and the vertex shader to flip the usage of the Z axis. Implementing depth-testing and flipping the Z axis did not result in a noticeable change in performance.
 
-\subsection{speedup pies}
+\section{Conclusion}
 
 \lipsum[1-1]
 
@@ -541,7 +554,7 @@ function updateAllParticles() {
 \label{fig:speedup-pies}
 \end{figure}
 
-\section{Conclusion}
+\lipsum[1-1]
 
 % (Continue to analyse as in the previous section but take a bigger-picture approach and summarise the overall findings. Write in a specific style knowing that some readers will have read the abstract and then jumped to this section.)
 
