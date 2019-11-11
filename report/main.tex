@@ -321,7 +321,7 @@ void updateOneParticle(int32_t i, float stepSize) {
 }
 \end{minted}
 
-Notes were made to precalculate \verb|1| \verb|-| \verb|airResistance| \verb|*| \verb|stepSize| and \verb|gravity| \verb|*| \verb|stepSize| in advance so it didn't have to be re-calculated for every call to this function, but at this stage it appeared that parallelising \verb|updateOneParticle()| across all four CPU cores would provide a more significant performance increase. The first attempt at this involved spawning four threads at the start of \verb|update()|. Each thread would repeatedly request new particles to update:
+Notes were made to precalculate \verb|1| \verb|-| \verb|airResistance| \verb|*| \verb|stepSize| and \verb|gravity| \verb|*| \verb|stepSize| in advance so it didn't have to be re-calculated for every call to this function, but at this stage it appeared that parallelising \verb|updateOneParticle()| across all four CPU cores would provide a more significant performance increase. The first attempt at this involved creating four threads at the start of \verb|update()|. Each thread would repeatedly request new particles to update:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 int32_t requestParticleIndex() {
@@ -346,7 +346,7 @@ void updaterThread(float stepSize) {
 }
 \end{minted}
 
-The function that spawned the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. The program was confirmed to be utilising multiple CPU cores using Visual Studio's diagnostics (figure \ref{fig:multithread-diagnostics}), where total CPU usage was significantly above $\frac{1}{core count}=$ 25\%.
+The function that created the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. The program was confirmed to be utilising multiple CPU cores using Visual Studio's diagnostics (figure \ref{fig:multithread-diagnostics}), where total CPU usage was significantly above $\frac{1}{core count}=$ 25\%.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{multithread-diagnostics}
@@ -405,7 +405,7 @@ CPU utilisation from \ref{fig:multithread-diagnostics} was re-evaluated and func
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{updaterthread-request}
-\caption{Execution time was dominated by requestParticleIndex(), in which multiple threads were waiting for each other to unlock a mutex.}
+\caption{Profiling showed execution time was dominated by requestParticleIndex(), in which multiple threads were waiting for each other to unlock a mutex.}
 \label{fig:updaterthread-request}
 \end{figure}
 
@@ -442,7 +442,7 @@ Newly-recorded frame durations (figure \ref{fig:mutexes-rangedthreads}) showed a
 
 A problematic entry was spotted in the diagnostics at the bottom of figure \ref{fig:mutexless-diag}: \verb|"std::vector|\linebreak[0]\verb|<glm::vec<3,float,0>,|\linebreak[0]\verb|std::allocator|..." This indicated that large allocations were being performed by a \verb|std::vector|. Tracking down where this was occurring was not straightforward as clicking through to the parent of this entry on the stack was not possible due to it being listed as "external code". By process of elimination, it was found that these allocations were occurring at the top of the call to \verb|graphics::render()|, which takes a \verb|std::vector| of \verb|Particle|s as a parameter.
 
-The compiler, which has the ability to run code analysis and perform optimisations during the build, did not identify that this parameter wasn't being mutated during the call to \verb|graphics::render()|, in which case it would have been automatically accessed by reference. The parameter's data was being passed by value, allocating and freeing over 1.5 MBs every time the function was called. The parameter was changed to a const reference,
+The compiler, which has the ability to run code analysis and perform optimisations during the build, did not identify that this parameter wasn't being mutated during the call to \verb|graphics::render()|, in which case it would have been automatically accessed by reference. The parameter's data was being passed by value, allocating and freeing over 1.5 MBs every time the function was called. The parameter was changed to a const reference:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 void render(const vector<Particle> &particles) {
@@ -450,41 +450,23 @@ void render(const vector<Particle> &particles) {
 }
 \end{minted}
 
-Which prevented the parameter from being copied and allowed the program to run up to twice as fast, as shown in figure \ref{fig:pass-by-value-reference}. The change gave a smaller speedup at lower particle counts due to the smaller size of the data that was being copied before solving this issue.
+This prevented the parameter from being copied and allowed the program to run up to twice as fast, as shown in figure \ref{fig:pass-by-value-reference}. The change gave a smaller speedup at lower particle counts due to the smaller size of the data that was being copied in the pass-by-value version of the program.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{pass-by-value-reference}
-\caption{Dramatic performance gains due to fixing simple pass-by-value issue that caused large reallocations.}
+\caption{Dramatic performance gains due to fixing a simple pass-by-value issue that caused large reallocations.}
 \label{fig:pass-by-value-reference}
 \end{figure}
 
-\subsection{,no thread recreation}
+\subsection{Re-Using Threads}
 
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{thread-create}
+\caption{Profiling showed that creating threads every frame had a significant cost and was an obvious target for improvement.}
+\label{fig:thread-create}
+\end{figure}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+During the search for the cause of the previous problem, thread creation was found to be very costly (figure \ref{fig:thread-create}), causing a taking 1-2 milliseconds before work within the created threads could start. The multithreading model was improved again, using a dual-semaphore system that creates updater threads at initialisation and re-uses them in the update loop, illustrated with the following pseudo-code.
 
 \begin{minted}[fontsize=\footnotesize]{javascript}
 Semaphore onUpdateStart;
@@ -492,15 +474,15 @@ Semaphore onUpdateComplete;
 
 function initialise() {
   for i in updaterThreadCount {
-    spawnThread(updaterThread);
+    createThread(updaterThread);
   }
 }
 
 function updaterThread() {
   while true {
-    onUpdateStart.wait();
+    onUpdateStart.wait(1);
     updateParticleRange();
-    onUpdateComplete.post();
+    onUpdateComplete.post(1);
   }
 }
 
