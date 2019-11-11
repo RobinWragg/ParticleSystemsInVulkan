@@ -466,7 +466,7 @@ This prevented the parameter from being copied and allowed the program to run up
 \label{fig:thread-create}
 \end{figure}
 
-During the search for the cause of the previous problem, thread creation was found to be very costly (figure \ref{fig:thread-create}), causing a taking 1-2 milliseconds before work within the created threads could start. The multithreading model was improved again, using a dual-semaphore system that creates updater threads at initialisation and re-uses them in the update loop, illustrated with the following pseudo-code.
+During the search for the cause of the previous problem, thread creation was found to be very costly (figure \ref{fig:thread-create}), causing a taking 1-2 milliseconds before work within the created threads could start. The multithreading model was improved again, using a dual-semaphore system that creates updater threads at initialisation and re-uses them in the update loop, illustrated with the following pseudo-code:
 
 \begin{minted}[fontsize=\footnotesize]{javascript}
 Semaphore onUpdateStart;
@@ -492,7 +492,9 @@ function updateAllParticles() {
 }
 \end{minted}
 
-(((Pseudo-code that updates particles in parallel without recreating threads, synchronised using dual semaphores.))) shows how this is implemented: When \verb|updateAllParticles()| is called on the main thread, it will wait and the \verb|updaterThread|s will each update their own particle ranges. When they are all done, they will notify \verb|updateAllParticles()| on the main thread, which will return. The \verb|updaterThread|s will wait for the next update at the top of their \verb|while| loops, and the main thread is then free to render the newly-updated particles.
+When \verb|updateAllParticles()| is called on the main thread, it allows the updater threads to continue while it waits. When all updater threads have updated their own particle ranges, they will notify \verb|updateAllParticles()|, which will return and the main thread will move on to the rendering stage. The updater threads will wait for the next update at the top of their \verb|while| loops.
+
+Modest improvements were found in the results at high particle counts, with more significant improvements toward the lower counts (figure \ref{fig:recreate-no-recreation}). The cause of this needs further investigation, but we can speculate that repeated thread creation and destruction in the older version of the program might have had a throughput bottleneck; perhaps there is a FIFO queue-like structure for thread creation and/or destruction at the operating system level that has a maximum size, and processes must wait if the queue is full. This would be a more significant cost for low particle counts because the program would update more frequently, therefore keeping the queue full by attempting to create and destroy more threads per second.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{recreate-no-recreation}
@@ -547,6 +549,13 @@ function updateAllParticles() {
 
 % TODO: appendix entry with full details of the computer - include the protocol and theoretical speed of the GPU's bus etc.
 % TODO: appendix entry with notes on Vulkan on macOS with MoltenVK
+
+\section{Appendix}
+
+hardware spec
+
+Further work
+Investigate while thread re-use is less beneficial at higher particle counts
 
 \end{document}
 
