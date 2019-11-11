@@ -498,30 +498,22 @@ Modest improvements were found in the results at high particle counts, with more
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{recreate-no-recreation}
-\caption{(placeholder caption)}
+\caption{The removal of thread creation from the frame loop generated frame duration reductions of up to 2.35ms, reducing in significance as the particle count grew.}
 \label{fig:recreate-no-recreation}
 \end{figure}
 
-\subsection{,simd w conversion} \label{sec:simd}
+\subsection{Single Instruction, Multiple Data (SIMD)} \label{sec:simd}
 
-\lipsum[1-1]
-
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{nosimd-slowsimd}
-\caption{(placeholder caption)}
-\label{fig:nosimd-slowsimd}
-\end{figure}
+Improving the efficiency of \verb|updateOneParticle()| was overdue and the chosen approach to tackling this was to rewrite the update code in SIMD instructions. CPU instructions generally mutate a single data points per instruction, but SIMD instructions can mutate multiple data points per instruction. In this project, we perform these instructions through the use of intrinsics; functions that we can write in C++ that the compiler turns into specially optimised machine code, including SIMD instructions. SIMD and intrinsics are not available on all x86/64 processors. Intel's documentation on our Core i5 6400 processor 
 
 ,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as XYZXYZXYZ..., similar to a common left-right layout for audio samples, LRLRLRLR. But sometimes other memory layouts are used, such as XXXYYYZZZ.
 
-\subsection{,simd w direct gpu transfer}
-
 \lipsum[1-1]
 
 \begin{figure}[h]
-\includegraphics[width=\linewidth]{nosimd-simdwic-simdwdirect}
+\includegraphics[width=\linewidth]{nosimd-simd}
 \caption{(placeholder caption)}
-\label{fig:nosimd-simdwic-simdwdirect}
+\label{fig:nosimd-simd}
 \end{figure}
 
 % (Describe in detail all the optimisation techniques I implemented and the changes in the performance characteristics of the program as I make changes to the code. Describe the critical thought processes along the way. Describe the complexity and other difficulties of implementing each optimisation. Towards the end of this section, focus on analysis including comparisons of related optimisations performed. Include charts showing how performance scales with the amount of particles. Include diagrams showing data pipelines.)
