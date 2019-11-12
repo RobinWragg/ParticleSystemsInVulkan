@@ -107,7 +107,7 @@ In modern graphics software, pipelines are highly customisable; several stages i
 
 In addition to world-space vectors, each vertex may have a variety of other data associated with it. This is called \emph{per-vertex data} or \emph{vertex attributes}. Some examples are vertex colours, texture coordinates and pre-computed surface normals. Since this stage represents the boundary between the CPU and GPU, data is transferred in large, contiguous blocks, rather than one vertex or triangle at a time, in order to mitigate the relatively slow communication due to the speed limit of electrons between two computer components that are often multiple inches apart, compared to \emph{e.g.} two cores in one CPU.
 
-A block of per-vertex data may have the corners of triangles laid out in physical memory as $xyzxyzxyzxyz$, known as \emph{Structure-of-Arrays}, or $xxxxyyyyzzzzxxxyyyyzzzz$, \emph{Array-of-Structures-of-Arrays}. These details need to be communicated to the GPU at this stage. A complete explanation and demonstration of this is given later in the paper, when SIMD is implemented in section \ref{sec:simd}.
+A block of per-vertex data may have the corners of triangles laid out in physical memory as $xyzxyzxyzxyzxyzxyzxyz$, or $xxxxyyyyzzzzxxxyyyyzzzz$. These details need to be communicated to the GPU at this stage. A complete explanation and demonstration of why these different memory layouts can be necessary is given later in the paper, when SIMD is implemented in section \ref{sec:simd}.
 
 Along with the per-vertex data, \emph{modelview} and \emph{projection} matrices for transforming the vertices into \emph{normalised-device-space} are commonly transferred to the GPU. This differs based on whether a \emph{perspective} view or \emph{orthographic} view is desired. However, these transformations are not used in this project; all our coordinates on the CPU are in normalised-device-space as we don't need to transform the view in order to produce a simple orthographic view.
 
@@ -281,7 +281,7 @@ void main() {
 }
 \end{minted}
 
-The fragment shader simply coloured the pixels using the value that was passed from the vertex shader:
+The fragment shader is very simple; it colours the pixels using the value that was passed from the vertex shader:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 layout(location = 0) in vec3 inColor;
@@ -510,11 +510,11 @@ SIMD and intrinsics are not available on all x86-64 processors. The Intel Core i
 
 An example of one of the intrinsics that are used in this project is \verb|_mm256_add_ps(|\linebreak[0]\verb|__m256 a,| \verb|__m256 b)| \citep{IntelIntrinsicsAVX}, which returns another \verb|__m256|. This is a datatype which contains eight contiguous 32-bit floats ($32\cdot8=256$), known as a \emph{vector}; literally an eight-dimensional vector of floats, hence why SIMD is sometimes referred to as \emph{vectorisation}. \verb|_mm256_add_ps(|\linebreak[0]\verb|__m256 a,| \verb|__m256 b)| takes a pair of these vectors, adds them together, and returns the result as another vector, enabling us to add eight pairs of floats together using only one instruction.
 
-As stated, the structure of \verb|__m256| requires that eight floats that should have the same operation performed on them are packed contiguously in memory, which means we cannot use the normal array-of-\verb|vec3|s memory layout of $xyzxyzxyzxyz$ (known as \emph{Structure-of-Arrays} or SoA). This is because the project requires that the $x$, $y$, and $z$ components are computed differently, \emph{e.g.} gravity must only be applied to the $z$ component.
+As stated, the structure of \verb|__m256| requires that eight floats that should have the same operation performed on them are packed contiguously in memory, which means we cannot use the normal array-of-\verb|vec3|s memory layout of $xyzxyzxyzxyzxyzxyz$ (known as \emph{Array-of-Structures} or AoS). This is because the project requires different operations to be performed on different components, \emph{e.g.} the effect of gravity must only be applied to the velocity's $y$ component.
 
-For eight-wide SIMD instructions, values must be packed in groups of eight such as $xxxxxxxxyyyyyyyyzzzzzzzz$
+Therefore, for eight-wide SIMD instructions, values must be packed in groups of eight such as $xxxxxxxxyyyyyyyyzzzzzzzz$, known as \emph{Structure-of-Arrays} or SoA
 
-,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as XYZXYZXYZ..., similar to a common left-right layout for audio samples, LRLRLRLR. But sometimes other memory layouts are used, such as XXXYYYZZZ.
+,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as $xyzxyzxyz$, similar to a common left-right layout for audio samples, $lrlrlrlr$. But sometimes other memory layouts are used, such as $xxxyyyzzz$.
 
 \lipsum[1-1]
 
