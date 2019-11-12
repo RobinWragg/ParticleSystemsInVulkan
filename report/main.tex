@@ -43,6 +43,12 @@
   {\thesubsection} % label
   {1em} % label separation
   {} % before-code
+  
+  \titleformat{\subsubsection}
+    {\sffamily\bfseries\small} % format
+    {\thesubsubsection} % label
+    {1em} % label separation
+    {} % before-code
 
 \title{\sffamily\bfseries An Exploration of Optimisation Techniques\\for Vulkan-based Particle Systems}
 \author{Robin Wragg}
@@ -206,10 +212,11 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 \section{Initial Implementation}
 
-% TODO: Figure of 100k particles (left) and 500k particles (right)
-
-% (Describe the design decisions of the program before any optimisation is performed, and any Vulkan-specific implementation details relevant to the project.)
-% My implementation never requires reallocating particles! Brag! It also simplifies SOA so we don't need to do AOSOA!
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{particles}
+\caption{The particle system, updating and rendering 500,000 particles.}
+\label{fig:particles}
+\end{figure}
 
 A Windows application was built in C++17, using version 2.0.10 of the SDL library (\citeyear{SDL2}) for window creation and frame duration calculation. Version 0.9.9.6 of the GLM library (\citeyear{GLM}) was used to provide a 3D vector class along with functionality for vector mathematics.
 
@@ -499,17 +506,57 @@ SIMD and intrinsics are not available on all x86-64 processors. The Intel Core i
 
 An example of one of the intrinsics that are used in this project is \verb|_mm256_add_ps(|\linebreak[0]\verb|__m256 a,| \verb|__m256 b)| \citep{IntelIntrinsicsAVX}, which returns another \verb|__m256|. This is a datatype which contains eight contiguous 32-bit floats ($32\cdot8=256$), known as a \emph{vector}; literally an eight-dimensional vector of floats, hence why SIMD is sometimes referred to as \emph{vectorisation}. \verb|_mm256_add_ps(|\linebreak[0]\verb|__m256 a,| \verb|__m256 b)| takes a pair of these vectors, adds them together, and returns the result as another vector, enabling us to add eight pairs of floats together using only one instruction.
 
-As stated, the structure of \verb|__m256| requires that eight floats that should have the same operation performed on them are packed contiguously in memory, which means we cannot use the normal array-of-\verb|vec3|s memory layout of $xyzxyzxyzxyzxyzxyz$ (known as \emph{Array-of-Structures} or AoS). This is because the project requires different operations to be performed on different components, \emph{e.g.} the effect of gravity must only be applied to the velocity's $y$ component.
+\subsubsection{Memory Layouts}
 
-Therefore, for eight-wide SIMD instructions, values must be packed in groups of eight such as $xxxxxxxxyyyyyyyyzzzzzzzz$, known as \emph{Structure-of-Arrays} or SoA \citep{JBlowSoA}
+If we are to produce an array or \verb|std::vector| of data like this in C++:
 
-,the corners of triangles are often stored in CPU-bound memory in an \emph{interleaved} layout as $xyzxyzxyz$, similar to a common left-right layout for audio samples, $lrlrlrlr$. But sometimes other memory layouts are used, such as $xxxyyyzzz$.
+\begin{minted}[fontsize=\footnotesize]{C++}
+vec3 array[8];
+\end{minted}
 
-\lipsum[1-1]
+This will lay out the components of \verb|vec3| in physical memory in this order: $xyzxyzxyzxyzxyzxyzxyzxyz$. This is of course the most common way to store many instances of a \verb|struct| in C or C++, and is known as \emph{Array-of-Structures} or AoS \citep{JBlowSoA}. However, correct usage of eight-wide SIMD requires that the components should be packed contiguously in memory, which means eight \verb|vec3|s must store all their $x$ components together, and the same for $y$ and $z$. One memory layout that satisfies this is $xxxxxxxxyyyyyyyyzzzzzzzz$, known as \emph{Structure-of-Arrays} or SoA \citep{JBlowSoA}. This can be written in C++ as follows, hence the name:
+
+\begin{minted}[fontsize=\footnotesize]{C++}
+struct {
+  float xComponents[8];
+  float yComponents[8];
+  float zComponents[8];
+};
+\end{minted}
+
+\subsubsection{Implementation}
+
+To make best use of SIMD in this project, all frequently-accessed particle data needed to be rearranged so that the components were adjacent. Here are the resultant \verb|std::vector|s of \verb|__m256|:
+
+\begin{minted}[fontsize=\footnotesize]{C++}
+std::vector<__m256> positionsX;
+std::vector<__m256> positionsY;
+std::vector<__m256> positionsZ;
+
+std::vector<__m256> brightnesses;
+
+std::vector<__m256> velocitiesX;
+std::vector<__m256> velocitiesY;
+std::vector<__m256> velocitiesZ;
+\end{minted}
+
+Each element of a \verb|std::vector| now contains data of eight particles, so each \verb|std::vector| was resized to $\frac{particle count}{8}$ and filled with particle data at initialisation, using \verb|_mm256_set*| instructions in loops. Each call to this class of instructions takes floats as parameters and efficiently arranges them into a \verb|__m256|, which can then be placed into the \verb|std::vector|s. Below is a section of the new, SIMD-enabled \verb|updateRange()| function, calculating the $x$ components of particle positions (see line 179 of particles.cpp for the full function):
+
+\begin{minted}[fontsize=\footnotesize]{C++}
+for (uint32 i = rangeStart; i < rangeEnd; i++) {
+  ...
+  // SIMD equivalent of pos.x += vel.x * stepSize;
+  positionsX[i] = _mm256_add_ps(positionsX[i],
+    _mm256_mul_ps(velocitiesX[i], stepSizeVector));
+  ...
+}
+\end{minted}
+
+This technique was repeated for the entire body of code responsible for spawning and updating particles. As shown in Figure \ref{fig:nosimd-simd}, this gave a speedup of approximately 25\% overall, scaling linearly with the particle count.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{nosimd-simd}
-\caption{(placeholder caption)}
+\caption{Updating particles using eight-wide AVX intrinsics resulted in a significant and linear speed increase with respect to the particle count.}
 \label{fig:nosimd-simd}
 \end{figure}
 
