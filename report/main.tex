@@ -5,14 +5,8 @@
 % Experiment Effectively!
 
 % TODO: research at http://vulkan.gpuinfo.org/
-% TODO: Identify the best of my academic writing style here and replicate it in the rest of the paper.
-% TODO: SOA & AOSOA etc, cite JBlow https://www.youtube.com/watch?v=YGTZr6bmNmk
 % TODO: CPU caches and mental model of a CPU, cite Casey https://guide.handmadehero.org/code/day112/
-% TODO: don't forget to use that godbolt thing and cite it!
-% TODO: What is cache associativity?
-% TODO: Big O notation is essential!
-% TODO: Write about optimisation attempt of 8bit brightness that failed because of memory alignment
-
+% TODO: appendix, godbolt thing
 
 \documentclass[11pt, a4paper]{article}
 \usepackage[T1]{fontenc}
@@ -79,16 +73,19 @@ Multiprocessors and offline rendering will be briefly explored, but this paper w
 
 Various ephemeral phenomena such as fire, rain, explosions and smoke can be challenging to render convincingly and efficiently using the mesh-of-triangles approach that is used for solid objects. This is because creating an accurate simulation of these phenomena is impossible to do in real-time as it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems.
 
-Creating an accurate simulation of these phenomena is impossible to do in real-time, because it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems. The technique involves rendering many \emph{particles} (discrete, simple objects) per frame; the number of particles is dependant on the intended realism/quality and the required rendering speed. Particle systems are more versatile than just a way to simulate realistic visual effects; they are often used to render unrealistic phenomena, such as magical effects.
+Creating an accurate simulation of these phenomena is impossible to do in real-time, because it would require representing many trillions of individual molecules; completely prohibitive from a performance perspective. Particle systems are a way of approximating the behaviour of these systems.
+
+The technique involves rendering many \emph{particles} (discrete, simple objects) per frame; the number of particles is dependant on the intended realism/quality and the required rendering speed. Particle systems are more versatile than just a way to simulate realistic visual effects; they are often used to render unrealistic phenomena, such as magical effects.
 
 A particle can be any simple, renderable object; \emph{billboards} (flat, textured polygons that always face the camera) are perhaps the most common kind of particle, and can represent an individual droplet of rain or a section of a cloud. But a particle can be anything the framerate allows; even traditional meshes can be used, if the amount and complexity are low enough for real-time rendering.
 
-Particle systems are a useful environment for experimenting with performance because the faster the particles render, the more particles and other objects are able to be rendered without a noticeable drop in framerate. This primarily gives more creative freedom to the artists on the project, but a noteworthy effect of simply increasing the particle count is often an increase in visual fidelity. This is because an increase in the number of particles will bring the total count slightly closer to the aforementioned trillions of molecules that most particle systems aim to simulate. Particle systems were chosen for this optimisation-based project because their quantitative nature makes them appropriate for quantifying the performance impact of any changes made to the program, and any successful optimisations will permit an improved framerate and particle count for this particle system demonstration.
+Particle systems are a useful environment for experimenting with performance because the faster the particles render, the more particles and other objects are able to be rendered without a noticeable drop in framerate. This primarily gives more creative freedom to the artists on the project, but a noteworthy effect of simply increasing the particle count is often an increase in visual fidelity. This is because an increase in the number of particles will bring the total count slightly closer to the aforementioned trillions of molecules that most particle systems aim to simulate.
+
+Particle systems were chosen for this optimisation-based project because their quantitative nature makes them appropriate for quantifying the performance impact of any changes made to the program, and any successful optimisations will permit an improved framerate and particle count for this particle system demonstration.
 
 \subsection{Offline Rendering}
 
-A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity isn't required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but an film company can often afford to take hours to render each frame. However, faster rendering is still beneficial; it is cost effective for film companies to invest in \emph{render farms}, clusters of networked computers configured specifically for fast rendering, in order to gain the ability to render more complex scenes and produce films more rapidly.
-% TODO: you gotta give an example. Like, disney snow? cite.
+A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity isn't required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but an film company can often afford to take hours to render each frame. However, faster rendering is still beneficial; it is cost effective for film companies to invest in \emph{render farms}, clusters of networked computers configured specifically for fast rendering, in order to gain the ability to render more complex scenes and produce films more rapidly (TODO CITE CITE CITE CITE CITE).
 
 \subsection{Real-time Graphics Pipelines}
 
@@ -122,13 +119,9 @@ The fragments of triangles that are hidden behind others are discarded here in a
 
 The \textbf{Fragment Shader} is the final stage in a simple graphics pipeline. Its main responsibility is to produce the final colour of each pixel. Any per-vertex data that has been passed on by the vertex shader gets transformed into per-fragment data; a vertex attribute that differs for each of the three corners of a triangle will be interpolated based on the position of the fragment in relation to the vertices. This is useful for lots of tasks, including generating per-fragment surface normals efficiently, since there is bespoke hardware on the GPU that performs this task before the fragment shader executes. The per-fragment data can then be observed by the fragment shader and the colour of the final pixel is computed.
 
-% TODO: colour blending, rendering to textures, uniforms. "to be clear, this is just one way to construct a graphics pipeline. "
-
 \subsection{The Vulkan API}
 
 Vulkan is a cross-platform Application Programming Interface for rendering 3D graphics in real-time \citep{Vulkan} (see Appendix \ref{app:moltenvk}). It is developed by the non-profit consortium, the Khronos Group (\citeyear{Khronos}). Along with its contemporaries, Direct3D 12 \citep{d3D12} and Metal \citep{AppleMetal}, it exists to provide graphics programmers with more control over the entire graphics pipeline, enabling a better balance in workload between the CPU and GPU. This was in response to its precursors, namely Direct3D 11 \citep{d3D11} and OpenGL \citep{OpenGLDocs}, which were often bottlenecked by the single-threaded performance of the CPU \citep{Joseph2016}.
-
-% TODO: Mention SPIR-V etc?
 
 \subsection{Multi-threading}
 
@@ -154,11 +147,9 @@ This means that a single-threaded task that requires a constant amount CPU time 
 
 \section{Literature Review}
 
-% TODO: \subsection{Performance Profiling}?
-
 \subsection{Particle System Design}
 
-\citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes (see Figure \ref{fig:tatarchuk}). The water would then splash into puddles using a pre-rendered splash sequence. The otherwise easy-to-spot repetitiveness of this splash was hidden by randomising the size and transparency of those particles, as well as flipping them horizontally. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the actual simulated falling speed of the droplets within the splash would be convincingly similar regardless of particle size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash. % TODO: Delve into this paper more?
+\citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes (see Figure \ref{fig:tatarchuk}). The water would then splash into puddles using a pre-rendered splash sequence. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the simulated falling speed of the droplets within the splash would be convincingly similar regardless of their size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash.
 
 \begin{figure}[H]
 \includegraphics[width=\linewidth]{tatarchuk}
@@ -187,22 +178,18 @@ A semaphore that is always either one or zero is equivalent to a mutex, except f
 
 Semaphores are being introduced into the C++ standard library as part of C++20 \citep{C20Sync}, so they aren't available to our C++17 environment but we could use a separate library for this functionality if necessary, such as the Boost library collection's \verb|interprocess_semaphore|, \verb|named_semaphore|, and \verb|anonymous_semaphore|.
 
-% TODO: Aaron says I could talk in more detail about different kinds of thread blocking like deadlocking.
+% TODO: Appendix: Aaron says I could talk in more detail about different kinds of thread blocking like deadlocking.
 Blocked threads are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. In the worst case, a \emph{deadlock} can occur when all threads are blocked, waiting on each other indefinitely. In the case of mutexes, a good rule of thumb is to keep the areas of the program that are mutex-guarded as small, simple and fast as possible, to reduce the amount of time that mutexes are locked, thereby reducing the chance of blocked threads.
 
 Although the effects of thread-blocking can be a significant challenge to remove entirely, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program.
 
 \emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \citep{Herlihy1993} in an attempt to detect whether data corruption had occurred due to simultaneous writes or reads. Again, this has a downside of requiring extra work per transaction.
 
-% "" (some of these techniques) are very complex; their usefulness must be weighed against the development team's ability to handle the additional complexity, and the cost of time spent implementing it. For this reason, we began implementing the optimisation techniques that appeared to have a good benefit-to-complexity ratio. % TODO: make a chart of these ratios?
-
-% good structure from "SunOS Multithread Architecture": The remainder of this paper is divided into N sections. The first section gives an overview of the architecture and introduces our terminology. The second section discusses our design goals and principles. The third section gives additional details of operation and interfaces and how the UNIX process model is reinterpreted in the new environment. The fourth section gives some performance data and operational experience. The last section compares this architecture with others.
-
 \section{Methodology}
 
 A particle system will be built in C++17 and Vulkan 1.1 to resemble spraying water, similar to some of the drainpipe work done by \citet{Tatarchuk2006}. Vertical synchronisation, the option to synchronise the framerate with the vertical refresh rate of the monitor, will be turned off and the program will calculate the duration of the slowest frame out of every one hundred frames (the 99th percentile) and print it to the console.
 
-% TODO: why use 99th?
+The 99th percentile of durations is a superior measurement compared to the average duration of a frame for our purposes, as a video game must maintain a framerate at or lower than the refresh rate of a display, particularly when vertical synchronisation is enabled; if a game rendering to a 60Hz ($16.\overline{6}$ms) renders most frames every 10ms but one out of one hundred frames takes 17ms, some frames will not reach the display in time and in-game motion will appear to stutter. If the game maintains frame durations of 15ms with no spikes, all frames will reach the display, despite the average frame duration being slower \citep{IntelFrameTime}.
 
 The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts. All measurements and profiling will be done on programs built with the "release" configuration to enable full compile-time optimisations.
 
@@ -211,10 +198,6 @@ The individual functions of the program will be profiled using tools such as Vis
 \subsection{Equipment}
 
 We will be designing, profiling and optimising the program for a desktop computer with an Intel Core i5 6400 at 2.7-3.3 GHz with four cores, 8GB of DDR4 RAM at 2133MHz and an Nvidia Geforce GTX 1060 3GB (see Appendix \ref{app:equipment}). This  graphics card is the most common among Steam users with a 14.5\% share at the time of writing \citep{SteamSurvey}. Valve/Steam's published data on their users' CPUs suggests that at least 25\% of users own a CPU with the same core count and a similar frequency as our i5 6400. 8GB is also the most popular memory amount at 37.1\% of users, so this setup in all should give us a good example of how this program would perform on an average user's system.
-
-% TODO: Note about the CPU not having more threads than cores? (4:4)
-
-% TODO: Talk about how we will profile it. Vulkan layers, Visual Studio's tools etc.
 
 \section{Initial Implementation}
 
@@ -259,11 +242,9 @@ void update(int particleCount, float deltaTime) {
 
 Notice the call to \verb|respawn()|. When a particle reaches a ground level \verb|1.0f|, this function is called to reset the particle's position, randomise its brightness, and set its new velocity with a degree of randomness.
 
-This algorithm has the problem of not intelligently spreading out the particles evenly across the scene, but this is not an issue in practice as the particles are positioned at a different height at the beginning of the program, such that they each take a different amount of time to hit ground level. This spreads out the respawn events across time.
-% TODO: "this is not a robust way to solve this problem for a real game" etc
+This algorithm has the problem of not intelligently spreading out the particles evenly across the scene, but this is not an issue in practice as the particles are positioned at a different height at the beginning of the program, such that they each take a different amount of time to hit ground level. This spreads out the respawn events across time. This is not a production-ready spawning system, but is robust enough for the purpose of this project.
 
 A Vulkan 1.1 graphics system was created in graphics.cpp that consumes the array of \verb|Particle| structures and sends them to the GPU. The Vulkan setup code was designed to find a graphics device whose driver supports a single \verb|VkQueue| (a queue for executing GPU-bound commands) that can process both graphical and surface presentation commands. This is done by checking for the \verb|VK_QUEUE_GRAPHICS_BIT| flag and ensuring that \verb|vkGetPhysicalDeviceSurfaceSupportKHR()| returns \verb|true|.
-% TODO: diagram or pseudocode describing the vulkan stuff
 
 A vertex shader was written to render one point per particle and adjust the brightnesses based on how close the particle is to the viewer:
 
@@ -299,7 +280,6 @@ void main() {
 % \emph{\textbf{Note:} The }std::\emph{ entries in this section's figures of diagnostics tables, such as figures \ref{fig:rng-mutex-diag} and \ref{fig:mutexless-diag}, are not costly operations although they appear at the top of their tables. They are related to }\verb|std::thread|\emph{ and are simply part of the call stack that led to costly operations.}
 
 Initial measurements were taken of the program's frame durations. Figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
-% TODO: Why does the measurement vary? "99th-percentile excacerbates it too"
 
 \begin{figure}[H]
 \includegraphics[width=\linewidth]{initialtimes}
@@ -613,7 +593,6 @@ This technique was repeated for the entire body of code responsible for spawning
 \item Intel i5 6400 Skylake 2.7GHz Quad Core 1151 Socket Processor
 \end{itemize}
 
-% TODO: appendix entry with notes on Vulkan on macOS with MoltenVK
 \section{MoltenVK} \label{app:moltenvk}
 
 Apple doesn't support Vulkan in any capacity and is the only major hardware vendor that doesn't as far as I'm aware. But luckily, MoltenVK and a Vulkan macOS/iOS framework exists as part of the Vulkan Portability Initiative. MoltenVK is a translation layer that sits between Apple's Metal SDK and a Vulkan application. It can be thought of as a simulation of a Vulkan-capable GPU, enabling graphics developers to run their programs without having to write a bespoke Metal graphics backend. I'm thinking about testing the cross-platform capabilities of Vulkan during my next project on light and shadow rendering, and it looks like MoltenVK would be essential for getting it running on my Macbook. It would be interesting to investigate to what extent this layer degrades performance compared to writing a program in Metal from scratch.
