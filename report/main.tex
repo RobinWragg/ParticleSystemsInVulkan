@@ -14,13 +14,14 @@
 % TODO: Write about optimisation attempt of 8bit brightness that failed because of memory alignment
 
 
-\documentclass[11pt, a4paper, twocolumn]{article}
+\documentclass[11pt, a4paper]{article}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{titlesec}
 \usepackage{natbib}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{multicol}
 \usepackage{graphicx}
 \usepackage[font={small, it}, labelfont=bf, center]{caption}
 \usepackage[top=1cm, left=1cm, right=1cm, bottom=2cm]{geometry}
@@ -57,11 +58,16 @@
 \begin{document}
 
 \maketitle
+
+\begin{center}
+\includegraphics[width=10cm]{particles}
+\end{center}
+
+\begin{multicols}{2}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{abstract}
-TODO TODO TODO TODO TODO TODO
-\end{abstract}
+\section*{Abstract}
+\textbf{\lipsum[1-1]}
 
 \section{Introduction}
 
@@ -92,7 +98,7 @@ In early versions of graphics APIs and hardware, this pipeline could not be modi
 
 In modern graphics software, pipelines are highly customisable; several stages in the pipeline can be added and removed even during the execution of the program, and more kinds of shaders were made available to graphics programmers, such as \emph{tessellation} and \emph{geometry} shaders. Despite this flexibility many stages and shaders are common across different pipelines as all graphics pipelines have a similar job to do. The most common stages will be discussed below in their order of execution.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{pipeline}
 \caption{A diagram of a basic graphics pipeline, simplified from the original image from \citet{PipelineImage}}
 \label{fig:pipeline}
@@ -140,7 +146,7 @@ Amdahl's law in its most optimistic case is when $p = 1$, which greatly simplifi
 
 This means that a single-threaded task that requires a constant amount CPU time can reach a fraction of that time if rewritten as a multi-threaded task, but every additional core yields diminishing returns (see Figure \ref{fig:cpu_cores}).
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{cpu_cores}
 \caption{An example of Amdahl's law \citep{Rodgers1985}: The best-case execution time of a task that requires one second of CPU time, by processor core count.}
 \label{fig:cpu_cores}
@@ -154,7 +160,7 @@ This means that a single-threaded task that requires a constant amount CPU time 
 
 \citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes (see Figure \ref{fig:tatarchuk}). The water would then splash into puddles using a pre-rendered splash sequence. The otherwise easy-to-spot repetitiveness of this splash was hidden by randomising the size and transparency of those particles, as well as flipping them horizontally. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the actual simulated falling speed of the droplets within the splash would be convincingly similar regardless of particle size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash. % TODO: Delve into this paper more?
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{tatarchuk}
 \caption{Work by \citet{Tatarchuk2006} on various rain effects.}
 \label{fig:tatarchuk}
@@ -212,7 +218,7 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 \section{Initial Implementation}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{particles}
 \caption{The particle system, updating and rendering 500,000 particles.}
 \label{fig:particles}
@@ -295,7 +301,7 @@ void main() {
 Initial measurements were taken of the program's frame durations. Figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
 % TODO: Why does the measurement vary? "99th-percentile excacerbates it too"
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{initialtimes}
 \caption{99th-percentile frame durations for different particle counts, before any optimisations were performed.}
 \label{fig:initialtimes}
@@ -344,7 +350,7 @@ void updaterThread(float stepSize) {
 
 The function that created the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. The program was confirmed to be utilising multiple CPU cores using Visual Studio's diagnostics (Figure \ref{fig:multithread-diagnostics}), where total CPU usage was significantly above $\frac{1}{core count}=$ 25\%.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{multithread-diagnostics}
 \caption{Diagnostics showing utilisation of multiple CPU cores.}
 \label{fig:multithread-diagnostics}
@@ -352,7 +358,7 @@ The function that created the threads would wait for them to finish by calling t
 
 After these changes a bug was discovered that caused particles to respawn with poor pseudo-random number generation (RNG) for velocities and brightnesses (Figure \ref{fig:randombug}).
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{randombug}
 \caption{Unnatural distributions of particles were exhibited after the first multithreading attempt.}
 \label{fig:randombug}
@@ -381,7 +387,7 @@ float randf() {
 
 Frame durations were recorded for the single-threaded program with the fixed RNG. The multithreading branch was then merged back into master, and frame durations were recorded again.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
 \caption{Changes in performance caused by fixing a bug in the pseudo-random number generation and sharing the particle updates across multiple threads.}
 \label{fig:initial-rng-multithread}
@@ -391,7 +397,7 @@ We can see in Figure \ref{fig:initial-rng-multithread} that the Mersenne Twister
 
 \subsection{Mutexless Multithreading}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{rng-mutex-diag}
 \caption{The program made less-than-maximum use of the CPU during and after initialisation, spending most of its time in particles::updaterThread().}
 \label{fig:rng-mutex-diag}
@@ -399,7 +405,7 @@ We can see in Figure \ref{fig:initial-rng-multithread} that the Mersenne Twister
 
 CPU utilisation from \ref{fig:multithread-diagnostics} was re-evaluated and function execution times were profiled. Figure \ref{fig:rng-mutex-diag} shows that after initialisation, the program was taking advantage of only 60-80\% of the CPU and the vast majority of time was spent executing \verb|particles::updaterThread()|. This is the same for all figures of diagnostics in this paper.). Upon closer inspection of what was taking time inside this function it can be seen that \verb|requestParticleIndex()| was very costly (Figure \ref{fig:updaterthread-request}); the operations in this function were guarded by a mutex as described in section \ref{sec:multithread}, so the updater threads were spending a lot of their time waiting on each other there.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{updaterthread-request}
 \caption{Profiling showed execution time was dominated by requestParticleIndex(), in which multiple threads were waiting for each other to unlock a mutex.}
 \label{fig:updaterthread-request}
@@ -420,7 +426,7 @@ void updateRange(int startIndex,
 
 The new CPU utilisation tended to be much closer to 100\% (Figure \ref{fig:mutexless-diag}), and most of the CPU time was now taken by \verb|updateOneParticle()| inside the new \verb|updateRange()| function, which was to become a site of future optimisation.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{mutexless-diag}
 \caption{Aside from the initialisation stage, all CPU cores were better utilised after a change to mutexless, ranged threads.}
 \label{fig:mutexless-diag}
@@ -428,7 +434,7 @@ The new CPU utilisation tended to be much closer to 100\% (Figure \ref{fig:mutex
 
 Newly-recorded frame durations (Figure \ref{fig:mutexes-rangedthreads}) showed a modest performance improvement which appeared to scale well at higher particle counts, although that may have been due to the margin of error in recordings.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
 \caption{Overall speed improvements due removing the primary cause of thread-blocking.}
 \label{fig:mutexes-rangedthreads}
@@ -448,7 +454,7 @@ void render(const vector<Particle> &particles) {
 
 This prevented the parameter from being copied and allowed the program to run up to twice as fast, as shown in Figure \ref{fig:pass-by-value-reference}. The change gave a smaller speedup at lower particle counts due to the smaller size of the data that was being copied in the pass-by-value version of the program.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{pass-by-value-reference}
 \caption{Dramatic performance gains due to fixing a simple pass-by-value issue that caused large reallocations.}
 \label{fig:pass-by-value-reference}
@@ -456,7 +462,7 @@ This prevented the parameter from being copied and allowed the program to run up
 
 \subsection{Re-Using Threads}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{thread-create}
 \caption{Profiling showed that creating threads every frame had a significant cost and was an obvious target for improvement.}
 \label{fig:thread-create}
@@ -492,7 +498,7 @@ When \verb|updateAllParticles()| is called on the main thread, it allows the upd
 
 Modest improvements were found in the results at high particle counts, with more significant improvements toward the lower counts (Figure \ref{fig:recreate-no-recreation}). The cause of this needs further investigation, but we can speculate that repeated thread creation and destruction in the older version of the program might have had a throughput bottleneck; perhaps there is a FIFO queue-like structure for thread creation and/or destruction at the operating system level that has a maximum size, and processes must wait if the queue is full. This would be a more significant cost for low particle counts because the program would update more frequently, therefore keeping the queue full by attempting to create and destroy more threads per second.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{recreate-no-recreation}
 \caption{The removal of thread creation from the frame loop generated frame duration reductions of up to 2.35ms, reducing in significance as the particle count grew.}
 \label{fig:recreate-no-recreation}
@@ -554,7 +560,7 @@ for (uint32 i = rangeStart; i < rangeEnd; i++) {
 
 This technique was repeated for the entire body of code responsible for spawning and updating particles. As shown in Figure \ref{fig:nosimd-simd}, this gave a speedup of approximately 25\% overall, scaling linearly with the particle count.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{nosimd-simd}
 \caption{Updating particles using eight-wide AVX intrinsics resulted in a significant and linear speed increase with respect to the particle count.}
 \label{fig:nosimd-simd}
@@ -566,13 +572,13 @@ This technique was repeated for the entire body of code responsible for spawning
 
 \section{Final Analysis}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{duration-tenthousand}
 \caption{placeholder}
 \label{fig:duration-tenthousand}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \includegraphics[width=\linewidth]{speedup-pies}
 \caption{(placeholder caption)}
 \label{fig:speedup-pies}
@@ -612,6 +618,7 @@ This technique was repeated for the entire body of code responsible for spawning
 
 Apple doesn't support Vulkan in any capacity and is the only major hardware vendor that doesn't as far as I'm aware. But luckily, MoltenVK and a Vulkan macOS/iOS framework exists as part of the Vulkan Portability Initiative. MoltenVK is a translation layer that sits between Apple's Metal SDK and a Vulkan application. It can be thought of as a simulation of a Vulkan-capable GPU, enabling graphics developers to run their programs without having to write a bespoke Metal graphics backend. I'm thinking about testing the cross-platform capabilities of Vulkan during my next project on light and shadow rendering, and it looks like MoltenVK would be essential for getting it running on my Macbook. It would be interesting to investigate to what extent this layer degrades performance compared to writing a program in Metal from scratch.
 
+\end{multicols}
 \end{document}
 
 
