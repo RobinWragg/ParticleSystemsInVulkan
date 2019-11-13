@@ -216,7 +216,7 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 A Windows application was built in C++17, using version 2.0.10 of the SDL library (\citeyear{SDL2}) for window creation and frame duration calculation. Version 0.9.9.6 of the GLM library (\citeyear{GLM}) was used to provide a 3D vector class along with functionality for vector mathematics.
 
-A particles.cpp file was created that updates an array of \verb|Particle| structures every frame, containing 3D positions and scalar brightness values as shown:
+A particles.cpp file was created that updates an array of \verb|Particle| structures every frame, containing 3D positions and scalar brightness values:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 struct Particle {
@@ -225,7 +225,7 @@ struct Particle {
 };
 \end{minted}
 
-Particle velocities were stored in a separate array since they did not need to be sent to the GPU. Updating the particles functioned by slightly reducing their velocities to simulate air resistance, increasing the downwards velocity to simulate gravity, and applying the velocities to each particle as follows:
+Particle velocities were stored in a separate array since they did not need to be sent to the GPU. Updating the particles functioned by slightly reducing their velocities to simulate air resistance, increasing the downwards velocity to simulate gravity, and applying the velocities to the particles' positions:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 void updateOneParticle(int32_t i, float stepSize) {
@@ -271,7 +271,7 @@ void main() {
 }
 \end{minted}
 
-The fragment shader is very simple; it colours the pixels using the value that was passed from the vertex shader:
+The fragment shader simply colours the pixels using the value that was passed from the vertex shader:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 layout(location = 0) in vec3 inColor;
@@ -310,7 +310,7 @@ void updateOneParticle(int32_t i, float stepSize) {
 }
 \end{minted}
 
-Notes were made to precalculate \verb|1| \verb|-| \verb|airResistance| \verb|*| \verb|stepSize| and \verb|gravity| \verb|*| \verb|stepSize| in advance so it did not have to be re-calculated for every call to this function, but at this stage it appeared that parallelising \verb|updateOneParticle()| across all four CPU cores would provide a more significant performance increase. The first attempt at this involved creating four threads at the start of \verb|update()|. Each thread would repeatedly request new particles to update:
+Micro-optimisations could be performed here, but parallelising \verb|updateOneParticle()| across all four CPU cores would provide a more significant performance increase. The first attempt at this involved creating four threads at the start of \verb|update()|. Each thread would repeatedly request new particles to update:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 int32_t requestParticleIndex() {
@@ -356,7 +356,7 @@ Debugging the program showed that the new multithreading code was performing cor
 
 Their documentation on \verb|rand()| does not mention thread-safety \citep{CLibRandMicrosoft}, but Linux's documentation states its implementation "is not reentrant or thread-safe" \citep{CLibRandLinux} due to its internal state, but this still does not explain why Microsoft's \verb|rand()| might not perform correctly across multiple threads, even when guarded by a mutex.
 
-To move on with development, the multithreading code was moved to a separate git branch, and \verb|rand()| and \verb|srand()| were replaced with \verb|mt19937| \citep{mt19937Docs}, an C++ standard library class that implements the Mersenne Twister RNG algorithm \citep{Matsumoto1998}. This generator requires more CPU time than \verb|rand()|, but it was seen as necessary due to the visual quality of particle systems relying heavily on well-distributed RNG values. The resultant code is shown below.
+To move on with development, the multithreading code was moved to a separate git branch, and \verb|rand()| and \verb|srand()| were replaced with \verb|mt19937| \citep{mt19937Docs}, an C++ standard library class that implements the Mersenne Twister RNG algorithm \citep{Matsumoto1998}. This generator requires more CPU time than \verb|rand()|, but it was seen as necessary due to the visual quality of particle systems relying heavily on well-distributed RNG values. The resultant C++ is shown below.
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 // Returns a unit-clamped float using Mersenne Twister.
@@ -398,7 +398,7 @@ CPU utilisation from \ref{fig:multithread-diagnostics} was re-evaluated and func
 \label{fig:updaterthread-request}
 \end{figure}
 
-A new multithreading model was formulated that did not involve any thread-blocking, except when the threads had finished their work after each frame's updates. Instead of each thread requesting a particle one at a time (which was probably still a significant cost regardless of the mutex issue), threads would be designated a range of particles at the start of an update, and the threads would run until all particles were updated; a thread would only update its own particles, so no resources had to be shared between threads. Below is the new replacement for the \verb|updaterThread()| function (\verb|updateOneParticle()| was not changed):
+A new multithreading model was formulated that did not involve any thread-blocking, except when the threads had finished their work after each frame's updates. Instead of each thread requesting a particle one at a time (which was probably still a significant cost regardless of the mutex issue), threads would be designated a range of particles at the start of an update, and the threads would run until all particles were updated; a thread would only update its own particles, so no resources had to be shared between threads. Below is the replacement for the \verb|updaterThread()| function (\verb|updateOneParticle()| was not changed):
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 void updateRange(int startIndex,
@@ -411,7 +411,7 @@ void updateRange(int startIndex,
 }
 \end{minted}
 
-The new CPU utilisation tended to be much closer to 100\% (Figure \ref{fig:mutexless-diag}), and most of the CPU time was now taken by \verb|updateOneParticle()| inside the new \verb|updateRange()| function, which was to become a site of future optimisation.
+The new CPU utilisation tended to be much closer to 100\% (Figure \ref{fig:mutexless-diag}), and most of the CPU time was now consumed by \verb|updateOneParticle()| inside the new \verb|updateRange()| function, which was to become a site of optimisation in Section \ref{sec:simd}.
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexless-diag}
@@ -447,7 +447,7 @@ This prevented the parameter from being copied and allowed the program to run up
 \label{fig:pass-by-value-reference}
 \end{figure}
 
-\subsection{Re-Using Threads} \ref{sec:threadreuse}
+\subsection{Re-Using Threads} \label{sec:threadreuse}
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{thread-create}
@@ -501,13 +501,13 @@ An example of one of the intrinsics that are used in this project is \verb|_mm25
 
 \subsubsection{Memory Layouts}
 
-If we are to produce an array or \verb|std::vector| of data like this in C++:
+Consider the creation of an array in C++:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 vec3 array[8];
 \end{minted}
 
-This will lay out the components of \verb|vec3| in physical memory in this order: $xyzxyzxyzxyzxyzxyzxyzxyz$. This is of course the most common way to store many instances of a \verb|struct| in C or C++, and is known as \emph{Array-of-Structures} or AoS \citep{JBlowSoA}. However, correct usage of eight-wide SIMD requires that the components should be packed contiguously in memory, which means eight \verb|vec3|s must store all their $x$ components together, and the same for $y$ and $z$. One memory layout that satisfies this is $xxxxxxxxyyyyyyyyzzzzzzzz$, known as \emph{Structure-of-Arrays} or SoA \citep{JBlowSoA}. This can be written in C++ as follows, hence the name:
+This will lay out the components of \verb|vec3| in physical memory in this order: $xyzxyzxyzxyzxyzxyzxyzxyz$. This is of course the most common way to store many instances of a \verb|struct| in C or C++, and is known as \emph{Array-of-Structures} or AoS \citep{JBlowSoA}. However, correct usage of eight-wide SIMD requires that the components should be packed contiguously in memory, which means eight \verb|vec3|s must store all their $x$ components together, and the same for $y$ and $z$. One memory layout that satisfies this is $xxxxxxxxyyyyyyyyzzzzzzzz$, known as \emph{Structure-of-Arrays} or SoA \citep{JBlowSoA}. This can be written in C++ as follows, hence its name:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 struct {
@@ -533,7 +533,7 @@ std::vector<__m256> velocitiesY;
 std::vector<__m256> velocitiesZ;
 \end{minted}
 
-Each element of a \verb|std::vector| now contains data of eight particles, so each \verb|std::vector| was resized to $\frac{particle count}{8}$ and filled with particle data at initialisation, using \verb|_mm256_set*| instructions in loops. Each call to this class of instructions takes floats as parameters and efficiently arranges them into a \verb|__m256|, which can then be placed into the \verb|std::vector|s. Below is a section of the new, SIMD-enabled \verb|updateRange()| function, calculating the $x$ components of particle positions (see line 179 of particles.cpp for the full function):
+Each element of a \verb|std::vector| now contains data of eight particles, so each \verb|std::vector| was resized to $\frac{particle count}{8}$ and filled with particle data at initialisation, using \verb|_mm256_set*| instructions in loops. Each call to this class of instructions takes floats as parameters and efficiently arranges them into a \verb|__m256|, which can then be placed into the \verb|std::vector|s. Below is an excerpt from the new, SIMD-enabled \verb|updateRange()| function, calculating the $x$ components of particle positions:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 for (uint32 i = rangeStart; i < rangeEnd; i++) {
@@ -573,17 +573,17 @@ At 100,000 particles, the re-use of threads from Section \ref{sec:threadreuse} g
 
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{speedup-pies}
-\caption{Speed increases caused by each optimisation phase, shown as percentages of total speedup over the initial version of the program.}
+\caption{Individual speedups caused by each optimisation phase, shown as percentages of total speedup over the initial version of the program.}
 \label{fig:speedup-pies}
 \end{figure}
 
 \section{Conclusion}
 
-\lipsum[1-1]
+A large breadth of research topics across particle systems, multithreading, general graphics techniques and biological simulation proved beneficial for providing mental models for time-limited applications. The research in multithreading in particular contributed to an understanding the various potential solutions of the problem domain.
 
+The particle system's performance was demonstrated to be entirely CPU-bound throughout all phases of development. Relevant optimisations centred around moving data between tasks efficiently and producing an appropriate multithreading model. This was done by mitigating the cost of creating threads and reducing the necessity for inter-thread communication. Additional productive work on parallelisation was implemented via the use of SIMD intrinsics.
 
-
-\lipsum[1-1]
+A promising area of further research and development is to offload parallelisable operations to the GPU via the Vulkan API's support for compute shaders \citep{Thomas2014}.
 
 % (Continue to analyse as in the previous section but take a bigger-picture approach and summarise the overall findings. Write in a specific style knowing that some readers will have read the abstract and then jumped to this section.)
 
