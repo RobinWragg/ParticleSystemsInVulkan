@@ -1,0 +1,30 @@
+Submission notes
+
+[ ] Proof read report
+[ ] Write up employment strategy
+[ ] Annotate and document around your shadows proposal presentation detailing changes to respond to criticisms.
+[ ] Write about summer projects
+	[ ] IMU project
+	[ ] JaiTools
+	[ ] RobinGB
+	[ ] RobinFFT
+[ ] Write about extra research
+	[ ] Attempts to reduce the amount of memory and bandwidth required for each particle by experimenting with changing the representation of particles in memory to groups of 8-bit or 16-bit integers, using quantisation-proof arithmetic and handling scaling in the vertex shader;
+	[ ] Offloading particle update operations to the GPU \emph{via} compute shaders \citep{Thomas2014}, storing data in textures and controlling the system through uniform variables;
+	[ ] Analysis and optimisation of CPU cache usage and other hardware-level operations \citep{MuratoriCPU}.
+	[ ] http://vulkan.gpuinfo.org/
+	[ ] godbolt thing
+
+
+word count (18:15, 13 Nov): 5415
+
+
+
+
+
+
+
+
+
+
+
