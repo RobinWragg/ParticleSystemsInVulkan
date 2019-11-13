@@ -8,7 +8,7 @@
 % TODO: CPU caches and mental model of a CPU, cite Casey https://guide.handmadehero.org/code/day112/
 % TODO: appendix, godbolt thing
 
-\documentclass[11pt, a4paper]{article}
+\documentclass[11pt, a4paper, twocolumn]{article}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{titlesec}
@@ -21,6 +21,7 @@
 \usepackage[top=1cm, left=1cm, right=1cm, bottom=2cm]{geometry}
 \usepackage{minted}
 \usepackage{lipsum}
+\usepackage{tocloft}
 
 \usepackage{helvet} % Helvetica 'phv'
 \usepackage{mathptmx} % Times 'ptm'
@@ -39,11 +40,11 @@
   {1em} % label separation
   {} % before-code
   
-  \titleformat{\subsubsection}
-    {\sffamily\bfseries\small} % format
-    {\thesubsubsection} % label
-    {1em} % label separation
-    {} % before-code
+\titleformat{\subsubsection}
+  {\sffamily\bfseries\small} % format
+  {\thesubsubsection} % label
+  {1em} % label separation
+  {} % before-code
 
 \title{\sffamily\bfseries An Exploration of Optimisation Techniques\\for Vulkan-based Particle Systems}
 \author{Robin Wragg}
@@ -51,17 +52,23 @@
 
 \begin{document}
 
+\onecolumn
 \maketitle
 
 \begin{center}
-\includegraphics[width=10cm]{particles}
+\includegraphics[width=12cm]{particles}
+
+\vspace{1cm}
+
+{\sffamily\bfseries\LARGE Abstract}
 \end{center}
+\lipsum[1-1]
 
-\begin{multicols}{2}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\twocolumn
 
-\section*{Abstract}
-\textbf{\lipsum[1-1]}
+\renewcommand{\cfttoctitlefont}{\sffamily\bfseries\Large}
+\renewcommand{\cftsecfont}{\sffamily\bfseries}
+\tableofcontents
 
 \section{Introduction}
 
@@ -85,7 +92,7 @@ Particle systems were chosen for this optimisation-based project because their q
 
 \subsection{Offline Rendering}
 
-A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity isn't required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but an film company can often afford to take hours to render each frame. However, faster rendering is still beneficial; it is cost effective for film companies to invest in \emph{render farms}, clusters of networked computers configured specifically for fast rendering, in order to gain the ability to render more complex scenes and produce films more rapidly (TODO CITE CITE CITE CITE CITE).
+A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity is not required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but an film company can often afford to take hours to render each frame. However, faster rendering is still beneficial; it is cost effective for film companies to invest in \emph{render farms}, clusters of networked computers configured specifically for fast rendering, in order to gain the ability to render more complex scenes and produce films more rapidly (TODO CITE CITE CITE CITE CITE).
 
 \subsection{Real-time Graphics Pipelines}
 
@@ -95,7 +102,7 @@ In early versions of graphics APIs and hardware, this pipeline could not be modi
 
 In modern graphics software, pipelines are highly customisable; several stages in the pipeline can be added and removed even during the execution of the program, and more kinds of shaders were made available to graphics programmers, such as \emph{tessellation} and \emph{geometry} shaders. Despite this flexibility many stages and shaders are common across different pipelines as all graphics pipelines have a similar job to do. The most common stages will be discussed below in their order of execution.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{pipeline}
 \caption{A diagram of a basic graphics pipeline, simplified from the original image from \citet{PipelineImage}}
 \label{fig:pipeline}
@@ -103,15 +110,15 @@ In modern graphics software, pipelines are highly customisable; several stages i
 
 \textbf{Vertex Input Assembly} is the initial stage, in which data is transferred to the GPU. The majority of this data is the vertices themselves, which are 3D vectors in world-space. These are in sets of three which represent the corners of a triangle, the simplest possible shape that has area; this is the minimum requirement for rendering surfaces (points and lines can be rendered with fewer vertices, but we will only discuss triangles for now).
 
-In addition to world-space vectors, each vertex may have a variety of other data associated with it. This is called \emph{per-vertex data} or \emph{vertex attributes}. Some examples are vertex colours, texture coordinates and pre-computed surface normals. Since this stage represents the boundary between the CPU and GPU, data is transferred in large, contiguous blocks, rather than one vertex or triangle at a time, in order to mitigate the relatively slow communication due to the speed limit of electrons between two computer components that are often multiple inches apart, compared to \emph{e.g.} two cores in one CPU.
+In addition to world-space vectors, each vertex may have a variety of other data associated with it. This is called \emph{per-vertex data} or \emph{vertex attributes}. Some examples are vertex colours, texture coordinates and pre-computed surface normals. Since this stage represents the boundary between the CPU and GPU, data is transferred in large, contiguous blocks, rather than one vertex or triangle at a time, in order to mitigate the relatively slow communication due to the speed limit of electrons between two separate computer components.
 
 A block of per-vertex data may have the corners of triangles laid out in physical memory as $xyzxyzxyzxyzxyzxyzxyz$, or $xxxxyyyyzzzzxxxyyyyzzzz$. These details need to be communicated to the GPU at this stage. A complete explanation and demonstration of why these different memory layouts can be necessary is given later in the paper, when SIMD is implemented in section \ref{sec:simd}.
 
-Along with the per-vertex data, \emph{modelview} and \emph{projection} matrices for transforming the vertices into \emph{normalised-device-space} are commonly transferred to the GPU. This differs based on whether a \emph{perspective} view or \emph{orthographic} view is desired. However, these transformations are not used in this project; all our coordinates on the CPU are in normalised-device-space as we don't need to transform the view in order to produce a simple orthographic view.
+Along with the per-vertex data, \emph{modelview} and \emph{projection} matrices for transforming the vertices into \emph{normalised-device-space} are commonly transferred to the GPU. This differs based on whether a \emph{perspective} view or \emph{orthographic} view is desired. However, these transformations are not used in this project; all our coordinates on the CPU are in normalised-device-space as producing a simple orthographic view does not require transformations.
 
 The \textbf{Vertex Shader} is the next stage. It is a customisable program that operates on a single vertex at a time. Like all shaders, many instances of the program are running simultaneously to enable fast throughput. The vertex shader involves the actual transformation from world-space to normalised-device-space; the latter is a three-dimensional coordinate system in which each axis extends from -1 to +1. This space makes the pipeline more efficient as anything outside of this range can be discarded before rasterisation.
 
-Many other operations can be performed in the vertex shader, and an beneficial optimisation process can be to move work from the fragment shader into the vertex shader where possible (\emph{e.g.} per-vertex lighting vs. per-fragment lighting), since there are many more generated fragments than there are vertices, making per-fragment operations more time-consuming. The shader can pass miscellaneous data on to be utilised in later stages.
+Many other operations can be performed in the vertex shader. There are many more generated fragments than there are vertices. This causes per-fragment operations to be more more time-consuming than per-vertex operations, \emph{ergo} a beneficial optimisation in a slow fragment shader is to move work to the vertex shader where possible.
 
 \textbf{Rasterisation} follows the vertex shader. This is where anything outside of normalised-device-space is discarded. Triangles are converted into \emph{fragments}, which are discrete data in pixel-space. This is done by flattening device-space triangles to 2D creating fragments based on whether the locations of pixels fall within those triangles.
 
@@ -125,7 +132,7 @@ Vulkan is a cross-platform Application Programming Interface for rendering 3D gr
 
 \subsection{Multi-threading}
 
-Concurrent execution is the very common technique in modern computing of running multiple threads in a single program; the effect is equivalent to two or more processes with access to the same memory. This allows a CPU with multiple cores to run more than one of these threads at once. Amdahl's law or Amdahl's argument \citep{Rodgers1985} shown below is a formula describing the theoretical speedup of a task when the system's resources are improved, such as when more CPU cores are added:
+Concurrent execution is the very common technique in modern computing of running multiple threads in a single program; the effect is equivalent to two or more processes with access to the same memory. This allows a CPU with multiple cores to run more than one of these threads at once. Amdahl's Law \citep{Rodgers1985} shown below is a formula describing the theoretical speedup of a task when the system's resources are improved, such as when more CPU cores are added:
 
 \begin{center}
 \begin{Large}
@@ -135,13 +142,13 @@ $speedup(s) = \frac{1}{(1-p)+\frac{p}{s}}$
 
 Where $speedup$ is the overall speed increase of the entire task, $s$ is the speed increase of the part of the task that is improved by better system resources, and $p$ is the original proportion of execution time that the improved part of the task occupied.
 
-Amdahl's law in its most optimistic case is when $p = 1$, which greatly simplifies to $speedup(s) = s$. If we improve the system by adding more processing cores, we introduce $c$, the number of processing cores in the system: $speedup(s) = cs$. Since $c$ is a coefficient of $s$, every increment to $c$ will result in a continually diminishing increase in $speedup(s)$.
+Amdahl's Law in its most optimistic case is when $p = 1$, which greatly simplifies to $speedup(s) = s$. If we improve the system by adding more processing cores, we introduce $c$, the number of processing cores in the system: $speedup(s) = cs$. Since $c$ is a coefficient of $s$, every increment to $c$ will result in a continually diminishing increase in $speedup(s)$.
 
 This means that a single-threaded task that requires a constant amount CPU time can reach a fraction of that time if rewritten as a multi-threaded task, but every additional core yields diminishing returns (see Figure \ref{fig:cpu_cores}).
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{cpu_cores}
-\caption{An example of Amdahl's law \citep{Rodgers1985}: The best-case execution time of a task that requires one second of CPU time, by processor core count.}
+\caption{An example of Amdahl's Law \citep{Rodgers1985}: The best-case execution time of a task that requires one second of CPU time, by processor core count.}
 \label{fig:cpu_cores}
 \end{figure}
 
@@ -151,17 +158,17 @@ This means that a single-threaded task that requires a constant amount CPU time 
 
 \citet{Tatarchuk2006} has shown many impressive techniques for rendering various effects for a realistic rainy night in a city. Of particular note was skillful use of particles based on pre-blurred normalmaps to create transparent water droplets that have realistic specular highlights from the surrounding streetlights. This is used convincingly both as rain directly from the sky and also as more of a waterfall-like effect to show water gushing out of drainpipes (see Figure \ref{fig:tatarchuk}). The water would then splash into puddles using a pre-rendered splash sequence. This could perhaps be improved even further by making larger splashes animate slightly slower, so that the simulated falling speed of the droplets within the splash would be convincingly similar regardless of their size. An additional visual improvement could involve spawning new, tiny droplets in a generally upward velocity at the point of the biggest splashes; this could emphasise the impact of the splash.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{tatarchuk}
 \caption{Work by \citet{Tatarchuk2006} on various rain effects.}
 \label{fig:tatarchuk}
 \end{figure}
 
-\citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have real-time graphics in mind, this grid-based approach could be applied to particle-based rendering for situations where the intended effect requires particles to react to each other based on their proximity. (TODO: That's called spatial hashing!) Additionally, \citet{Boulianne2007} states ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' meaning this technique would likely be appropriate for rendering real-time particle systems and the parallel nature of GPUs.
+\citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have real-time graphics in mind, this grid-based approach could be applied to particle-based rendering for situations where the intended effect requires particles to react to each other based on their proximity. (TODO: That is called spatial hashing!) Additionally, \citet{Boulianne2007} states ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' \emph{ergo} this technique would likely be appropriate for rendering real-time particle systems and the parallel nature of GPUs.
 
 \subsection{Techniques for Efficient Real-time Graphics}
 
-\citet{Crawford2018} noted that shader compiler optimisation can make a modest improvement to graphics performance, but it is highly dependent on shader code itself. With their test suite of the LunarGlass/LLVM optimisation framework and the GLSL shaders from GFXBench 4.0, they found that shaders can be sped up by as much as 25\% by finding the best combination of compiler flags, but 1-4\% should be expected in general. Common optimisations that shader compilers can perform are dead code elimination, factoring out conditionals, unrolling loops, coalescing multiple vector element assignments into a single swizzled (TODO: explain swizzling. VkImageViewCreateInfo uses it) vector assignment, global value numbering causing variable elimination, and simplifying arithmetic by reordering the statements. The study reviewed only source-to-source optimisations; source-to-machine-code optimisations weren't explored. Further speed-ups could be found in that area.
+\citet{Crawford2018} noted that shader compiler optimisation can make a modest improvement to graphics performance, but it is highly dependent on shader code itself. With their test suite of the LunarGlass/LLVM optimisation framework and the GLSL shaders from GFXBench 4.0, they found that shaders can be sped up by as much as 25\% by finding the best combination of compiler flags, but 1-4\% should be expected in general. Common optimisations that shader compilers can perform are dead code elimination, factoring out conditionals, unrolling loops, coalescing multiple vector element assignments into a single swizzled (TODO: explain swizzling. VkImageViewCreateInfo uses it) vector assignment, global value numbering causing variable elimination, and simplifying arithmetic by reordering the statements. The study reviewed only source-to-source optimisations; source-to-machine-code optimisations were not explored. Further speed-ups could be found in that area.
 
 Referring to Vulkan and Direct3D 12, \citet{Joseph2016} states ``the central focus of this new generation of APIs is to increase the amount of draw calls possible while decreasing the amount of overhead for the CPU.'' As graphics programmers, we can reinterpret this to indicate that it is critical to reduce the amount of time that the CPU and GPU are required to block each other to communicate, in order to get the most out of the hardware.
 
@@ -176,7 +183,7 @@ Coordination between threads is a necessary characteristic of reliable multi-thr
 
 A semaphore that is always either one or zero is equivalent to a mutex, except for one difference: A \verb|post()| operation can be performed by any thread that has access to the semaphore, allowing any thread to unblock execution, instead of just the thread which called \verb|wait()|.
 
-Semaphores are being introduced into the C++ standard library as part of C++20 \citep{C20Sync}, so they aren't available to our C++17 environment but we could use a separate library for this functionality if necessary, such as the Boost library collection's \verb|interprocess_semaphore|, \verb|named_semaphore|, and \verb|anonymous_semaphore|.
+Semaphores are being introduced into the C++ standard library as part of C++20 \citep{C20Sync} \emph{ergo} they are not available in the C++17 environment. Microsoft's \verb|CreateSemaphore()| et al. \citep{MicrosoftSemaphore} was used in this project.
 
 % TODO: Appendix: Aaron says I could talk in more detail about different kinds of thread blocking like deadlocking.
 Blocked threads are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. In the worst case, a \emph{deadlock} can occur when all threads are blocked, waiting on each other indefinitely. In the case of mutexes, a good rule of thumb is to keep the areas of the program that are mutex-guarded as small, simple and fast as possible, to reduce the amount of time that mutexes are locked, thereby reducing the chance of blocked threads.
@@ -201,7 +208,7 @@ We will be designing, profiling and optimising the program for a desktop compute
 
 \section{Initial Implementation}
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{particles}
 \caption{The particle system, updating and rendering 500,000 particles.}
 \label{fig:particles}
@@ -218,7 +225,7 @@ struct Particle {
 };
 \end{minted}
 
-Particle velocities were stored in a separate array since they didn't need to be sent to the GPU. Updating the particles functioned by slightly reducing their velocities to simulate air resistance, increasing the downwards velocity to simulate gravity, and applying the velocities to each particle as follows:
+Particle velocities were stored in a separate array since they did not need to be sent to the GPU. Updating the particles functioned by slightly reducing their velocities to simulate air resistance, increasing the downwards velocity to simulate gravity, and applying the velocities to each particle as follows:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 void updateOneParticle(int32_t i, float stepSize) {
@@ -281,7 +288,7 @@ void main() {
 
 Initial measurements were taken of the program's frame durations. Figure \ref{fig:initialtimes} shows that these times scale mostly linearly by particle count apart from the duration for 500k particles, which showed slightly better proportional performance. However, it was discovered that the 99th percentile of any sample set of frame durations can vary by up to 10\%; the non-linearity of these measurements falls within that margin of error. From this point onwards, efforts were taken to gather typical 99th-percentile measurements that did not appear to be anomalous.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{initialtimes}
 \caption{99th-percentile frame durations for different particle counts, before any optimisations were performed.}
 \label{fig:initialtimes}
@@ -303,7 +310,7 @@ void updateOneParticle(int32_t i, float stepSize) {
 }
 \end{minted}
 
-Notes were made to precalculate \verb|1| \verb|-| \verb|airResistance| \verb|*| \verb|stepSize| and \verb|gravity| \verb|*| \verb|stepSize| in advance so it didn't have to be re-calculated for every call to this function, but at this stage it appeared that parallelising \verb|updateOneParticle()| across all four CPU cores would provide a more significant performance increase. The first attempt at this involved creating four threads at the start of \verb|update()|. Each thread would repeatedly request new particles to update:
+Notes were made to precalculate \verb|1| \verb|-| \verb|airResistance| \verb|*| \verb|stepSize| and \verb|gravity| \verb|*| \verb|stepSize| in advance so it did not have to be re-calculated for every call to this function, but at this stage it appeared that parallelising \verb|updateOneParticle()| across all four CPU cores would provide a more significant performance increase. The first attempt at this involved creating four threads at the start of \verb|update()|. Each thread would repeatedly request new particles to update:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 int32_t requestParticleIndex() {
@@ -330,7 +337,7 @@ void updaterThread(float stepSize) {
 
 The function that created the threads would wait for them to finish by calling their \verb|std::thread::join()| method before returning. The program was confirmed to be utilising multiple CPU cores using Visual Studio's diagnostics (Figure \ref{fig:multithread-diagnostics}), where total CPU usage was significantly above $\frac{1}{core count}=$ 25\%.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{multithread-diagnostics}
 \caption{Diagnostics showing utilisation of multiple CPU cores.}
 \label{fig:multithread-diagnostics}
@@ -338,14 +345,14 @@ The function that created the threads would wait for them to finish by calling t
 
 After these changes a bug was discovered that caused particles to respawn with poor pseudo-random number generation (RNG) for velocities and brightnesses (Figure \ref{fig:randombug}).
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{randombug}
 \caption{Unnatural distributions of particles were exhibited after the first multithreading attempt.}
 \label{fig:randombug}
 \end{figure}
 
 % WORDCOUNT: explain what a random seed is.
-Debugging the program showed that the new multithreading code was performing correctly, so attention was given to the random number generation itself, implemented with the standard C library functions \verb|rand()| and \verb|srand()| (\citeyear{CLibRand}). To debug this, calls to these functions were wrapped in mutex locks to ensure no race conditions or data corruption was occurring; this did not change the generated random numbers. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed wasn't given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program. The generated numbers still had a poor distribution, and further debugging confirmed that Microsoft's implementation of these functions has some kind of thread-based limitation.
+Debugging the program showed that the new multithreading code was performing correctly, so attention was given to the random number generation itself, implemented with the standard C library functions \verb|rand()| and \verb|srand()| (\citeyear{CLibRand}). To debug this, calls to these functions were wrapped in mutex locks to ensure no race conditions or data corruption was occurring; this did not change the generated random numbers. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed was not given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program. The generated numbers still had a poor distribution, and further debugging confirmed that Microsoft's implementation of these functions has some kind of thread-based limitation.
 
 Their documentation on \verb|rand()| does not mention thread-safety \citep{CLibRandMicrosoft}, but Linux's documentation states its implementation "is not reentrant or thread-safe" \citep{CLibRandLinux} due to its internal state, but this still does not explain why Microsoft's \verb|rand()| might not perform correctly across multiple threads, even when guarded by a mutex.
 
@@ -367,7 +374,7 @@ float randf() {
 
 Frame durations were recorded for the single-threaded program with the fixed RNG. The multithreading branch was then merged back into master, and frame durations were recorded again.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{initial-rng-multithread}
 \caption{Changes in performance caused by fixing a bug in the pseudo-random number generation and sharing the particle updates across multiple threads.}
 \label{fig:initial-rng-multithread}
@@ -377,7 +384,7 @@ We can see in Figure \ref{fig:initial-rng-multithread} that the Mersenne Twister
 
 \subsection{Mutexless Multithreading}
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{rng-mutex-diag}
 \caption{The program made less-than-maximum use of the CPU during and after initialisation, spending most of its time in particles::updaterThread().}
 \label{fig:rng-mutex-diag}
@@ -385,13 +392,13 @@ We can see in Figure \ref{fig:initial-rng-multithread} that the Mersenne Twister
 
 CPU utilisation from \ref{fig:multithread-diagnostics} was re-evaluated and function execution times were profiled. Figure \ref{fig:rng-mutex-diag} shows that after initialisation, the program was taking advantage of only 60-80\% of the CPU and the vast majority of time was spent executing \verb|particles::updaterThread()|. This is the same for all figures of diagnostics in this paper.). Upon closer inspection of what was taking time inside this function it can be seen that \verb|requestParticleIndex()| was very costly (Figure \ref{fig:updaterthread-request}); the operations in this function were guarded by a mutex as described in section \ref{sec:multithread}, so the updater threads were spending a lot of their time waiting on each other there.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{updaterthread-request}
 \caption{Profiling showed execution time was dominated by requestParticleIndex(), in which multiple threads were waiting for each other to unlock a mutex.}
 \label{fig:updaterthread-request}
 \end{figure}
 
-A new multithreading model was formulated that didn't involve any thread-blocking, except when the threads had finished their work after each frame's updates. Instead of each thread requesting a particle one at a time (which was probably still a significant cost regardless of the mutex issue), threads would be designated a range of particles at the start of an update, and the threads would run until all particles were updated; a thread would only update its own particles, so no resources had to be shared between threads. Below is the new replacement for the \verb|updaterThread()| function (\verb|updateOneParticle()| was not changed):
+A new multithreading model was formulated that did not involve any thread-blocking, except when the threads had finished their work after each frame's updates. Instead of each thread requesting a particle one at a time (which was probably still a significant cost regardless of the mutex issue), threads would be designated a range of particles at the start of an update, and the threads would run until all particles were updated; a thread would only update its own particles, so no resources had to be shared between threads. Below is the new replacement for the \verb|updaterThread()| function (\verb|updateOneParticle()| was not changed):
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 void updateRange(int startIndex,
@@ -406,7 +413,7 @@ void updateRange(int startIndex,
 
 The new CPU utilisation tended to be much closer to 100\% (Figure \ref{fig:mutexless-diag}), and most of the CPU time was now taken by \verb|updateOneParticle()| inside the new \verb|updateRange()| function, which was to become a site of future optimisation.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexless-diag}
 \caption{Aside from the initialisation stage, all CPU cores were better utilised after a change to mutexless, ranged threads.}
 \label{fig:mutexless-diag}
@@ -414,17 +421,17 @@ The new CPU utilisation tended to be much closer to 100\% (Figure \ref{fig:mutex
 
 Newly-recorded frame durations (Figure \ref{fig:mutexes-rangedthreads}) showed a modest performance improvement which appeared to scale well at higher particle counts, although that may have been due to the margin of error in recordings.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{mutexes-rangedthreads}
 \caption{Overall speed improvements due removing the primary cause of thread-blocking.}
 \label{fig:mutexes-rangedthreads}
 \end{figure}
 
-\subsection{Passing Particles by Reference}
+\subsection{Passing Particles by Reference} \label{sec:passby}
 
-A problematic entry was spotted in the diagnostics at the bottom of Figure \ref{fig:mutexless-diag}: \verb|"std::vector<|\linebreak[0]\verb|glm::vec<3,float,0>,|\linebreak[0]\verb|std::allocator|..." This indicated that large allocations were being performed by a \verb|std::vector|. Tracking down where this was occurring was not straightforward as clicking through to the parent of this entry on the stack was not possible due to it being listed as "external code". By process of elimination, it was found that these allocations were occurring at the top of the call to \verb|graphics::render()|, which takes a \verb|std::vector| of \verb|Particle|s as a parameter.
+A problematic entry was spotted in the diagnostics at the bottom of Figure \ref{fig:mutexless-diag}: \verb|"std::vector<|\linebreak[0]\verb|glm::vec<3,float,0>,|\linebreak[0]\verb|std::allocator|..." The cause of this was difficult to diagnose as the release build had made much of the surrounding code unreachable from the debugger. Analysis a debug build revealed that large allocations were being performed by the \verb|std::vector<Particle>| parameter to the call to \verb|graphics::render()|.
 
-The compiler, which has the ability to run code analysis and perform optimisations during the build, did not identify that this parameter wasn't being mutated during the call to \verb|graphics::render()|, in which case it would have been automatically accessed by reference. The parameter's data was being passed by value, allocating and freeing over 1.5 MBs every time the function was called. The parameter was changed to a const reference:
+The compiler, which has the ability to run code analysis and perform optimisations during the build, did not identify that this parameter was not being mutated during the call to \verb|graphics::render()|, in which case it would have been automatically accessed by reference. The parameter's data was being passed by value, allocating and freeing over 1.5 MBs every time the function was called. The parameter was changed to a const reference:
 
 \begin{minted}[fontsize=\footnotesize]{C++}
 void render(const vector<Particle> &particles) {
@@ -434,15 +441,15 @@ void render(const vector<Particle> &particles) {
 
 This prevented the parameter from being copied and allowed the program to run up to twice as fast, as shown in Figure \ref{fig:pass-by-value-reference}. The change gave a smaller speedup at lower particle counts due to the smaller size of the data that was being copied in the pass-by-value version of the program.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{pass-by-value-reference}
 \caption{Dramatic performance gains due to fixing a simple pass-by-value issue that caused large reallocations.}
 \label{fig:pass-by-value-reference}
 \end{figure}
 
-\subsection{Re-Using Threads}
+\subsection{Re-Using Threads} \ref{sec:threadreuse}
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{thread-create}
 \caption{Profiling showed that creating threads every frame had a significant cost and was an obvious target for improvement.}
 \label{fig:thread-create}
@@ -478,15 +485,15 @@ When \verb|updateAllParticles()| is called on the main thread, it allows the upd
 
 Modest improvements were found in the results at high particle counts, with more significant improvements toward the lower counts (Figure \ref{fig:recreate-no-recreation}). The cause of this needs further investigation, but we can speculate that repeated thread creation and destruction in the older version of the program might have had a throughput bottleneck; perhaps there is a FIFO queue-like structure for thread creation and/or destruction at the operating system level that has a maximum size, and processes must wait if the queue is full. This would be a more significant cost for low particle counts because the program would update more frequently, therefore keeping the queue full by attempting to create and destroy more threads per second.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{recreate-no-recreation}
 \caption{The removal of thread creation from the frame loop generated frame duration reductions of up to 2.35ms, reducing in significance as the particle count grew.}
 \label{fig:recreate-no-recreation}
 \end{figure}
 
-\subsection{Single Instruction, Multiple Data (SIMD)} \label{sec:simd}
+\subsection{Single Instruction, Multiple Data} \label{sec:simd}
 
-Improving the efficiency of \verb|updateOneParticle()| was overdue and the chosen approach to tackling this was to rewrite the update code in SIMD instructions. CPU instructions generally operate on a single data point per instruction, but a SIMD instruction can operate on multiple data points, usually without a significant increase in execution time. In this project, we perform these instructions through the use of intrinsics; functions that we can write in C++ that the compiler turns into specially optimised machine code, including SIMD instructions. In the majority of cases, an instrinsic maps to a specific SIMD instruction.
+The next task was to rewrite the update code in SIMD instructions, informed by the relative slowness of \verb|updateOneParticle()|. CPU instructions generally operate on a single data point per instruction, but a SIMD instruction can operate on multiple data points, usually without a significant increase in execution time. In this project, we perform these instructions through the use of intrinsics; functions that we can write in C++ that the compiler turns into specially optimised machine code, including SIMD instructions. In the majority of cases, an instrinsic maps to a specific SIMD instruction.
 
 SIMD and intrinsics are not available on all x86-64 processors. The Intel Core i5 6400 processor supports multiple extensions to the standard x86-64 \citep{Corei56400}; this project's update phase is based on 32-bit floats, so the most appropriate extensions are the Advanced Vector Extensions (AVX) version 1. These extensions include instructions that operate on 32-bit floats with a \emph{width} of eight, meaning each instruction can operate on eight floats at once.
 
@@ -538,9 +545,9 @@ for (uint32 i = rangeStart; i < rangeEnd; i++) {
 }
 \end{minted}
 
-This technique was repeated for the entire body of code responsible for spawning and updating particles. As shown in Figure \ref{fig:nosimd-simd}, this gave a speedup of approximately 25\% overall, scaling linearly with the particle count.
+This technique was repeated for the entire body of code responsible for spawning and updating particles. As shown in Figure \ref{fig:nosimd-simd}, this gave a speedup of approximately 25\%.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{nosimd-simd}
 \caption{Updating particles using eight-wide AVX intrinsics resulted in a significant and linear speed increase with respect to the particle count.}
 \label{fig:nosimd-simd}
@@ -552,15 +559,21 @@ This technique was repeated for the entire body of code responsible for spawning
 
 \section{Final Analysis}
 
-\begin{figure}[H]
+In the final build, the frame duration was found to be inversely and linearly proportional to the particle count. The exception to this was with particle counts below approximately 80,000, where the total cost of updating them became outweighed by the combined cost of all other per-frame operations. Figure \ref{fig:duration-tenthousand} shows frame durations approached a minimum of 450µs.
+
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{duration-tenthousand}
-\caption{placeholder}
+\caption{Frame durations in the final program do not scale linearly with particle counts below 80,000.}
 \label{fig:duration-tenthousand}
 \end{figure}
 
-\begin{figure}[H]
+Relative speed increases after each stage of optimisation were compared in Figure \ref{fig:speedup-pies}. The first implementation of multithreading gave the most gains overall but at 500,000 particles, the primary contributor to faster performance was the work from Section \ref{sec:passby} to pass particles to \verb|graphics::render()| by reference, bolstering the \emph{a priori} knowledge that copying large amounts of data has a high cost.
+
+At 100,000 particles, the re-use of threads from Section \ref{sec:threadreuse} gave the largest speed increase, showing that frequent thread-recreation was significant performance cost in the previous multithreading implementations that went unnoticed due to most profiling being performed at higher particle counts. This demonstrates the importance of profiling the performance of a program in multiple scenarios and configurations.
+
+\begin{figure}[h]
 \includegraphics[width=\linewidth]{speedup-pies}
-\caption{(placeholder caption)}
+\caption{Speed increases caused by each optimisation phase, shown as percentages of total speedup over the initial version of the program.}
 \label{fig:speedup-pies}
 \end{figure}
 
@@ -585,7 +598,7 @@ This technique was repeated for the entire body of code responsible for spawning
 \section{Full Computer Specification} \label{app:equipment}
 
 \begin{itemize}
-\item Windows 10.0.17763 with Windows SDK 10.0.16299 
+\item Windows 10.0.17763 with Windows SDK version 10.0.16299 
 \item Asrock H110M-ITX/AC DDR4 Motherboard
 \item SanDisk SSD PLUS 240 GB 2.5 inch drive, up to 530 MB/s, Sata III
 \item Gigabyte Nvidia GTX 1060 3GB Windforce 2 with DDR5 VRAM
@@ -595,9 +608,8 @@ This technique was repeated for the entire body of code responsible for spawning
 
 \section{MoltenVK} \label{app:moltenvk}
 
-Apple doesn't support Vulkan in any capacity and is the only major hardware vendor that doesn't as far as I'm aware. But luckily, MoltenVK and a Vulkan macOS/iOS framework exists as part of the Vulkan Portability Initiative. MoltenVK is a translation layer that sits between Apple's Metal SDK and a Vulkan application. It can be thought of as a simulation of a Vulkan-capable GPU, enabling graphics developers to run their programs without having to write a bespoke Metal graphics backend. I'm thinking about testing the cross-platform capabilities of Vulkan during my next project on light and shadow rendering, and it looks like MoltenVK would be essential for getting it running on my Macbook. It would be interesting to investigate to what extent this layer degrades performance compared to writing a program in Metal from scratch.
+Apple does not support Vulkan in any capacity, but MoltenVK and a Vulkan macOS/iOS framework exist as part of the Vulkan Portability Initiative \citep{MoltenVK}. MoltenVK is a translation layer that sits between Apple's Metal SDK and a Vulkan application. It can be thought of as a simulation of a Vulkan-capable GPU, enabling graphics developers to run their programs without having to write a bespoke Metal graphics backend. Tests on the cross-platform capabilities of Vulkan could feature the upcoming project on light and shadow rendering; it would be interesting to investigate to what extent the MoltenVK layer degrades performance compared to writing a program in Metal from scratch.
 
-\end{multicols}
 \end{document}
 
 
