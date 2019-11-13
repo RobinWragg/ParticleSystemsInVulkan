@@ -4,10 +4,6 @@
 % Communicate Effectively!
 % Experiment Effectively!
 
-% TODO: research at http://vulkan.gpuinfo.org/
-% TODO: CPU caches and mental model of a CPU, cite Casey https://guide.handmadehero.org/code/day112/
-% TODO: appendix, godbolt thing
-
 \documentclass[11pt, a4paper, twocolumn]{article}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -56,13 +52,16 @@
 \maketitle
 
 \begin{center}
-\includegraphics[width=12cm]{particles}
+\includegraphics[width=14cm]{particles}
 
 \vspace{1cm}
 
 {\sffamily\bfseries\LARGE Abstract}
 \end{center}
-\lipsum[1-1]
+
+A modern, consumer-level computer provides the ability for many tasks to be performed simultaneously and extremely rapidly. However, this power can only be taken advantage of if the software running on it is built and refined with the computer's capabilities in mind. Vulkan is a high-performance, real-time graphics API. It provides the ability for graphics programmers to control graphics processing hardware more explicitly and reliably than previous solutions. Particle systems are a method of efficiently rendering many moving components to a display simultaneously, in order to produce various ephemeral effects including smoke, fire and water.
+
+In this paper, a particle system is built using C++17 and the Vulkan API to serve as a framework for testing and experimentation with graphics performance issues and optimisations. Areas of research include multithreading and Single-Intruction, Multiple-Data (SIMD). The particle system is continually tuned to run as fast as possible on a computer with a Intel quad-core CPU and an Nvidia GTX 1060. Rendering speed is recorded and analysed for a spread of different particle counts, and conclusions are drawn on the efficacy of all optimisation techniques that are attempted throughout the course of the project.
 
 \twocolumn
 
@@ -92,7 +91,7 @@ Particle systems were chosen for this optimisation-based project because their q
 
 \subsection{Offline Rendering}
 
-A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity is not required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but an film company can often afford to take hours to render each frame. However, faster rendering is still beneficial; it is cost effective for film companies to invest in \emph{render farms}, clusters of networked computers configured specifically for fast rendering, in order to gain the ability to render more complex scenes and produce films more rapidly (TODO CITE CITE CITE CITE CITE).
+A particle system containing trillions of particles is generally not viable unless rendering is done offline, \emph{i.e.} before the finished animation is due to play instead of rendering each frame as it is needed. This is done when interactivity is not required, such as the mode of operation for animated film production companies. In offline particle systems, the number of particles is still limited by how fast the frame can be rendered, but a film company can often afford to take hours to render each frame \citep{Cook1987}.
 
 \subsection{Real-time Graphics Pipelines}
 
