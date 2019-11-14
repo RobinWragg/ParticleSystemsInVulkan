@@ -185,7 +185,7 @@ This means that a single-threaded task that requires a constant amount CPU time 
 \label{fig:tatarchuk}
 \end{figure}
 
-\citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search. Although their implementation did not have real-time graphics in mind, this grid-based approach could be applied to particle-based rendering for situations where the intended effect requires particles to react to each other based on their proximity. (TODO: That is called spatial hashing!) Additionally, \citet{Boulianne2007} states ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' \emph{ergo} this technique would likely be appropriate for rendering real-time particle systems and the parallel nature of GPUs.
+\citet{Boulianne2007} implemented a biological system simulator using a 3D grid in which each element can hold one or zero particles. Their simulator needed to take into account the spacial locality of particles; a grid facilitates this by removing the need for distance calculation and particle search, a technique known as \emph{spacial hashing} \citep{Lefebvre2006}. Although their implementation did not have real-time graphics in mind, this grid-based approach could be applied to particle-based rendering for situations where the intended effect requires particles to react to each other based on their proximity. Additionally, \citet{Boulianne2007} states ``this system is expected to be suitable for acceleration with parallel customizable hardware,'' \emph{ergo} this technique would likely be appropriate for rendering real-time particle systems and the parallel nature of GPUs.
 
 \subsection{Techniques for Efficient Real-time Graphics}
 
@@ -199,29 +199,27 @@ Coordination between threads is a necessary characteristic of reliable multi-thr
 
 \textbf{Mutexes} are perhaps the most common mechanism to ensure thread coordination. A thread can attempt to \emph{lock} a mutex; if the mutex was previously in an unlocked state, the attempt to lock is successful and that thread can continue as normal. The thread now "owns" the mutex. If the mutex is already locked, in most cases the thread will be blocked, and will wait until another thread \emph{unlocks} the mutex (only the owning thread can unlock a mutex). The exception to this is when a \verb|try_lock()| function or equivalent is called on the mutex instead of \verb|lock()|; this will not block the thread, and will instead give the opportunity for the thread to do other work while it waits for  Not all mutex implementation have \verb|try_lock()|, but this functionality is available for this project as part of C++'s \verb|std::mutex| \citep{CppMutex}.
 
-% WORDCOUNT: talk about how I'm using semaphores in Vulkan
 \textbf{Semaphores} come in various kinds, but in general they are thread-safe counters. Specifics as to how a semaphore is used is up to its API and the programmer's needs, but a common convention is for a thread to perform a \verb|wait()| operation on a semaphore, which will cause the thread to block until the semaphore's counter is greater than zero. At that point, or if it was already greater than zero, the semaphore will decrement by one and the thread will continue executing. A \verb|post()| can be performed by any thread, which will increment the semaphore. If the counter is above zero and there is at least one thread waiting on the semaphore, one thread can now continue as stated above \citep{BoostSync}.
 
 A semaphore that is always either one or zero is equivalent to a mutex, except for one difference: A \verb|post()| operation can be performed by any thread that has access to the semaphore, allowing any thread to unblock execution, instead of just the thread which called \verb|wait()|.
 
 Semaphores are being introduced into the C++ standard library as part of C++20 \citep{C20Sync} \emph{ergo} they are not available in the C++17 environment. Microsoft's \verb|CreateSemaphore()| et al. \citep{MicrosoftSemaphore} was used in this project.
 
-% TODO: Appendix: Aaron says I could talk in more detail about different kinds of thread blocking like deadlocking.
 Blocked threads are a significant cause of the reduction of maximum theoretical performance on multi-core systems \citep{Alemany1992}. In the worst case, a \emph{deadlock} can occur when all threads are blocked, waiting on each other indefinitely. In the case of mutexes, a good rule of thumb is to keep the areas of the program that are mutex-guarded as small, simple and fast as possible, to reduce the amount of time that mutexes are locked, thereby reducing the chance of blocked threads.
 
-Although the effects of thread-blocking can be a significant challenge to remove entirely, there exist programming techniques that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program.
+Although the effects of thread-blocking can be a significant challenge to remove entirely, programming techniques exist that allow concurrent sections to communicate without blocking each other, such as \emph{exponential backoff}, an algorithm commonly used in network coordination, that slows a process or thread in order to reduce congestion on a shared resource such as an Ethernet node \citep{Goodman2019}, or more applicably for us, a mutex or critical memory. This of course has the downside of one or more threads not operating at their maximum speed but it can have an overall benefit, depending on the bottlenecks of the program.
 
-\emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \citep{Herlihy1993} in an attempt to detect whether data corruption had occurred due to simultaneous writes or reads. Again, this has a downside of requiring extra work per transaction.
+\emph{Optimistic concurrency control} is another class of algorithms for non-blocking concurrency that involves validating a transaction performed on shared data before committing it \citep{Herlihy1993}, in an attempt to detect whether data corruption had occurred due to simultaneous writes or reads. Again, this has a downside of requiring extra work per transaction.
 
 \section{Methodology}
 
-A particle system will be built in C++17 and Vulkan 1.1 to resemble spraying water, similar to some of the drainpipe work done by \citet{Tatarchuk2006}. Vertical synchronisation, the option to synchronise the framerate with the vertical refresh rate of the monitor, will be turned off and the program will calculate the duration of the slowest frame out of every one hundred frames (the 99th percentile) and print it to the console.
+A particle system will be built in C++17 and Vulkan 1.1 to resemble spraying water, similar to the drainpipe work done by \citet{Tatarchuk2006}. \emph{Vertical synchronisation}, the option to synchronise the framerate with the vertical refresh rate of the monitor, will be disabled and the program will calculate the duration of the slowest frame out of every one hundred frames (the 99th percentile) and print it to the console.
 
-The 99th percentile of durations is a superior measurement compared to the average duration of a frame for our purposes, as a video game must maintain a framerate at or lower than the refresh rate of a display, particularly when vertical synchronisation is enabled; if a game rendering to a 60Hz ($16.\overline{6}$ms) renders most frames every 10ms but one out of one hundred frames takes 17ms, some frames will not reach the display in time and in-game motion will appear to stutter. If the game maintains frame durations of 15ms with no spikes, all frames will reach the display, despite the average frame duration being slower \citep{IntelFrameTime}.
+The 99th percentile of durations is a superior measurement compared to the average duration of a frame for our purpose, as a video game must maintain a framerate at or lower than the refresh rate of a display, particularly when vertical synchronisation is enabled; if a game rendering to a 60Hz monitor (with a $16.\overline{6}$ms frame period) renders most frames every 10ms but one out of every hundred frames takes 17ms, some frames will not reach the display in time and in-game motion will appear to stutter. If the game maintains frame durations of 15ms with no spikes, all frames will reach the display, despite the average frame duration being slower than that of the former case \citep{IntelFrameTime}. 99th-percentile measurements can indicate when the former case exhibits itself.
 
-The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts. All measurements and profiling will be done on programs built with the "release" configuration to enable full compile-time optimisations.
+The amount of particles rendered per frame will be set to 100,000, 200,000, 300,000, 400,000, and 500,000. These numbers will be plotted alongside the frame durations. This will give indications as to whether any optimisation has its greatest effect on high or low particle counts. All measurements and profiling will be done on programs built with the "release" configuration to enable full compile-time optimisation.
 
-The individual functions of the program will be profiled using tools such as Visual Studio's performance analyzer \citep{VSPerfTools} in order to gain an understanding of which parts of the code could be improved. The program will be optimised in stages. At every stage, the performance will be re-examined, new plots will be produced, and the next optimisation steps will be researched and evaluated.
+The individual functions of the program will be profiled using tools such as Visual Studio's performance analyser \citep{VSPerfTools} in order to gain an understanding of which parts of the code could be improved. The program will be optimised in stages. At every stage, the performance will be re-examined, new plots will be produced, and the next optimisation steps will be researched and evaluated.
 
 \subsection{Equipment}
 
@@ -270,7 +268,7 @@ void update(int particleCount, float deltaTime) {
 
 Notice the call to \verb|respawn()|. When a particle reaches a ground level \verb|1.0f|, this function is called to reset the particle's position, randomise its brightness, and set its new velocity with a degree of randomness.
 
-This algorithm has the problem of not intelligently spreading out the particles evenly across the scene, but this is not an issue in practice as the particles are positioned at a different height at the beginning of the program, such that they each take a different amount of time to hit ground level. This spreads out the respawn events across time. This is not a production-ready spawning system, but is robust enough for the purpose of this project.
+This algorithm has the problem of not intelligently spreading out the particles evenly across the scene, but this is not an issue in practice as the particles are positioned at a different height at the beginning of the program, such that they each take a different amount of time to hit ground level. This spreads out the respawn events across time. This is not a production-ready respawning system, but is robust enough for the purpose of this project.
 
 A Vulkan 1.1 graphics system was created in graphics.cpp that consumes the array of \verb|Particle| structures and sends them to the GPU. The Vulkan setup code was designed to find a graphics device whose driver supports a single \verb|VkQueue| (a queue for executing GPU-bound commands) that can process both graphical and surface presentation commands. This is done by checking for the \verb|VK_QUEUE_GRAPHICS_BIT| flag and ensuring that \verb|vkGetPhysicalDeviceSurfaceSupportKHR()| returns \verb|true|.
 
@@ -372,7 +370,6 @@ After these changes a bug was discovered that caused particles to respawn with p
 \label{fig:randombug}
 \end{figure}
 
-% WORDCOUNT: explain what a random seed is.
 Debugging the program showed that the new multithreading code was performing correctly, so attention was given to the random number generation itself, implemented with the standard C library functions \verb|rand()| and \verb|srand()| (\citeyear{CLibRand}). To debug this, calls to these functions were wrapped in mutex locks to ensure no race conditions or data corruption was occurring; this did not change the generated random numbers. To deduce whether the seed generation by \verb|srand()| was thread-local and therefore generating bad values when a seed was not given for each thread, experimental code was written that would re-call \verb|srand()| at the start of each thread instead of just once at the start of the program. The generated numbers still had a poor distribution, and further debugging confirmed that Microsoft's implementation of these functions has some kind of thread-based limitation.
 
 Their documentation on \verb|rand()| does not mention thread-safety \citep{CLibRandMicrosoft}, but Linux's documentation states its implementation "is not reentrant or thread-safe" \citep{CLibRandLinux} due to its internal state, but this still does not explain why Microsoft's \verb|rand()| might not perform correctly across multiple threads, even when guarded by a mutex.
@@ -622,7 +619,18 @@ Apple does not support Vulkan in any capacity, but MoltenVK and a Vulkan macOS/i
 
 \section{Swizzling} \label{app:swizzle}
 
-awegjiawieg
+Swizzling is syntactic sugar for assigning disparate sets of vector components; if we want to assign the $x$ and $y$ components of a \verb|vec3| to the $z$ and $y$ components respectively of another \verb|vec3|, we can do so in some languages and vector implementations simply as follows, in this GLSL as an example:
+
+\begin{minted}[fontsize=\footnotesize]{GLSL}
+// Assignment without swizzling
+vecB.z = vecA.x;
+vecB.y = vecA.y;
+
+// The same assignment with swizzling
+vecB.zy = vecA.xy;
+\end{minted}
+
+Graphics processors are often designed with the knowledge that this is a common operation, which allows swizzling to be more efficient than the non-swizzled version of the operation. Due to their efficiency, many optimising compilers will attempt to identify when non-swizzled operations can be swizzled, and will make that change before or during compilation.
 
 \section{Full Computer Specification} \label{app:equipment}
 
